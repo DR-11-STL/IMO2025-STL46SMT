@@ -229,52 +229,71 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             image_wm = Image.open(uploaded_image)
             draw = ImageDraw.Draw(image_wm)
             
-            # Format teks diberi spasi antar bagian persis seperti contoh Timemark Verified
+            # Format teks diberi spasi ekstra 
             teks_watermark = f"{waktu}\n\n{lokasi}\n\n{koordinat}\n\n{kegiatan}"
             
-            # Perbesar font menjadi 4.5% dari sisi terkecil foto agar mantap dan proporsional
+            # Hitung ukuran font proporsional (4.5% dari dimensi terkecil foto)
             dimensi_dasar = min(image_wm.width, image_wm.height)
             ukuran_font = int(dimensi_dasar * 0.045)
             if ukuran_font < 40: 
                 ukuran_font = 40
             
-            try:
-                font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
-            except IOError:
+            # MENCARI ALAMAT FONT LANGSUNG DI SERVER LINUX STREAMLIT
+            font_paths = [
+                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+                "DejaVuSans.ttf",
+                "LiberationSans-Regular.ttf",
+                "arial.ttf"
+            ]
+            
+            font = None
+            for fp in font_paths:
                 try:
-                    font = ImageFont.truetype("arial.ttf", ukuran_font)
+                    font = ImageFont.truetype(fp, ukuran_font)
+                    break # Berhenti mencari jika font berhasil dimuat
                 except IOError:
-                    font = ImageFont.load_default()
+                    pass
                     
-            # Pindah posisi ke kiri atas dengan margin 5% dari pinggir gambar
+            if font is None:
+                font = ImageFont.load_default()
+            
+            # Margin posisi kiri atas
             margin_x = int(image_wm.width * 0.05)
             margin_y = int(image_wm.height * 0.05)
+            spacing_teks = int(ukuran_font * 0.3)
             
-            # Hitung tinggi total blok teks untuk menyesuaikan panjang garis biru
+            # Menghitung tinggi total teks secara akurat untuk memotong garis biru
             try:
-                bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=15)
+                bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=spacing_teks)
                 tinggi_teks_total = bbox[3] - bbox[1]
             except AttributeError:
-                tinggi_teks_total = (teks_watermark.count('\n') + 1) * int(ukuran_font * 1.3)
+                if font != ImageFont.load_default():
+                    tinggi_teks_total = (teks_watermark.count('\n') + 1) * int(ukuran_font * 1.1)
+                else:
+                    tinggi_teks_total = (teks_watermark.count('\n') + 1) * 15 
             
             # Gambar garis vertikal biru tebal di sebelah kiri
-            lebar_garis = int(ukuran_font * 0.3)
+            lebar_garis = int(ukuran_font * 0.25)
+            if lebar_garis < 10: lebar_garis = 10
+            
             draw.rectangle(
                 [margin_x, margin_y, margin_x + lebar_garis, margin_y + tinggi_teks_total],
                 fill="blue"
             )
             
-            # Geser koordinat teks sedikit ke kanan dari garis biru
-            text_x = margin_x + lebar_garis + int(ukuran_font * 0.6)
+            # Geser koordinat teks ke kanan agar tidak menabrak garis biru
+            text_x = margin_x + lebar_garis + int(ukuran_font * 0.5)
             text_y = margin_y
             
-            # Outline bayangan hitam yang tebal agar kontras di latar terang/gelap
+            # Outline bayangan hitam tebal
             for adj_x in [-3, -2, -1, 0, 1, 2, 3]:
                 for adj_y in [-3, -2, -1, 0, 1, 2, 3]:
-                    draw.multiline_text((text_x + adj_x, text_y + adj_y), teks_watermark, font=font, fill="black", spacing=15)
+                    draw.multiline_text((text_x + adj_x, text_y + adj_y), teks_watermark, font=font, fill="black", spacing=spacing_teks)
                     
             # Cetak teks putih utama
-            draw.multiline_text((text_x, text_y), teks_watermark, font=font, fill="white", spacing=15)
+            draw.multiline_text((text_x, text_y), teks_watermark, font=font, fill="white", spacing=spacing_teks)
             
             st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
 
