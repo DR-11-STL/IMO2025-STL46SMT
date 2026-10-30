@@ -1,6 +1,6 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import io
 import zipfile  # Modul baru untuk membungkus banyak file jadi ZIP
 
@@ -124,85 +124,139 @@ with col_kanan:
 st.write("Pilih jenis pekerjaan yang ingin dilakukan hari ini:")
 mode_kerja = st.radio(
     "Mode Aplikasi",
-    ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres"],
+    ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres", "📸 Generator Foto Watermark Laporan"],
     label_visibility="collapsed",
     horizontal=True
 )
 st.divider()
 
-# FITUR BARU: Menerima banyak file sekaligus (accept_multiple_files=True)
-pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar ", type=["pdf"], accept_multiple_files=True)
+# ==========================================
+# LOGIKA MENU 1 & 2 (PEMROSESAN PDF)
+# ==========================================
+if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres"]:
+    pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
+    data_siap_proses = []
 
-data_siap_proses = []
+    if mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
+        st.subheader("📸 Form Rangkaian Foto Progres")
+        st.write("*Isi maksimal 5 aset. Yang dikosongkan akan dilewati otomatis.*")
 
-# --- TAMPILAN BERDASARKAN MODE ---
-if mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
-    st.subheader("📸 Form Rangkaian Foto Progres")
-    st.write("*Isi maksimal 5 aset. Yang dikosongkan akan dilewati otomatis.*")
-
-    for i in range(1, 6):
-        st.markdown(f"**Rangkaian Aset ke-{i}**")
-        nama_aset = st.text_input(f"Nama Aset {i}", key=f"nama_{i}", placeholder="Contoh: Peraga Sinyal")
-        
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
-            if img_0: st.image(img_0, use_container_width=True) 
-        with col2:
-            img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
-            if img_50: st.image(img_50, use_container_width=True) 
-        with col3:
-            img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
-            if img_100: st.image(img_100, use_container_width=True) 
-        
-        if nama_aset and img_0 and img_50 and img_100:
-            data_siap_proses.append({
-                "nama_aset": nama_aset,
-                "img_0": img_0,
-                "img_50": img_50,
-                "img_100": img_100
-            })
-        st.divider()
-
-# --- EKSEKUSI TOMBOL PROSES ---
-if pdf_inputs:
-    if mode_kerja == "🧹 Hanya Bersihkan Kotak Pink Anotasi":
-        if st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
-            with st.spinner("Sedang membersihkan kotak pink pada file PDF..."):
-                if len(pdf_inputs) == 1:
-                    # Jika hanya 1 file, unduh sebagai PDF biasa
-                    pdf_file = pdf_inputs[0]
-                    hasil_pdf_bytes = proses_dokumen(pdf_file, [])
-                    nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                    
-                    st.success("Selesai! Kotak pink berhasil dihapus dan foto laporan tetap utuh.")
-                    st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
-                else:
-                    # Jika banyak file, gabungkan ke dalam file ZIP
-                    zip_buffer = io.BytesIO()
-                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                        for pdf_file in pdf_inputs:
-                            hasil_pdf_bytes = proses_dokumen(pdf_file, [])
-                            nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                            zip_file.writestr(nama_file_unduh, hasil_pdf_bytes)
-                    
-                    st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi.")
-                    st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
-                    
-    elif mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
-        if len(pdf_inputs) > 1:
-            st.info("ℹ️ Perhatian: Pada mode jahit foto, sistem hanya akan memproses file PDF yang letaknya paling pertama.")
+        for i in range(1, 6):
+            st.markdown(f"**Rangkaian Aset ke-{i}**")
+            nama_aset = st.text_input(f"Nama Aset {i}", key=f"nama_{i}", placeholder="Contoh: Peraga Sinyal")
             
-        if len(data_siap_proses) > 0:
-            st.success(f"Ada {len(data_siap_proses)} rangkaian foto yang siap dijahit.")
-            if st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
-                with st.spinner("Sedang membersihkan PDF dan menjahit lampiran foto..."):
-                    pdf_file = pdf_inputs[0] # Hanya memproses 1 file untuk mode jahit
-                    hasil_pdf_bytes = proses_dokumen(pdf_file, data_siap_proses)
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
+                if img_0: st.image(img_0, use_container_width=True) 
+            with col2:
+                img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
+                if img_50: st.image(img_50, use_container_width=True) 
+            with col3:
+                img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
+                if img_100: st.image(img_100, use_container_width=True) 
+            
+            if nama_aset and img_0 and img_50 and img_100:
+                data_siap_proses.append({
+                    "nama_aset": nama_aset,
+                    "img_0": img_0,
+                    "img_50": img_50,
+                    "img_100": img_100
+                })
+            st.divider()
+
+    # --- EKSEKUSI TOMBOL PROSES PDF ---
+    if pdf_inputs:
+        if mode_kerja == "🧹 Hanya Bersihkan Kotak Pink Anotasi":
+            if st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
+                with st.spinner("Sedang membersihkan kotak pink pada file PDF..."):
+                    if len(pdf_inputs) == 1:
+                        pdf_file = pdf_inputs[0]
+                        hasil_pdf_bytes = proses_dokumen(pdf_file, [])
+                        nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
+                        
+                        st.success("Selesai! Kotak pink berhasil dihapus dan foto laporan tetap utuh.")
+                        st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
+                    else:
+                        zip_buffer = io.BytesIO()
+                        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                            for pdf_file in pdf_inputs:
+                                hasil_pdf_bytes = proses_dokumen(pdf_file, [])
+                                nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
+                                zip_file.writestr(nama_file_unduh, hasil_pdf_bytes)
+                        
+                        st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi.")
+                        st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
+                        
+        elif mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
+            if len(pdf_inputs) > 1:
+                st.info("ℹ️ Perhatian: Pada mode jahit foto, sistem hanya akan memproses file PDF yang letaknya paling pertama.")
+                
+            if len(data_siap_proses) > 0:
+                st.success(f"Ada {len(data_siap_proses)} rangkaian foto yang siap dijahit.")
+                if st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
+                    with st.spinner("Sedang membersihkan PDF dan menjahit lampiran foto..."):
+                        pdf_file = pdf_inputs[0] 
+                        hasil_pdf_bytes = proses_dokumen(pdf_file, data_siap_proses)
+                        
+                        nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
+                        
+                        st.balloons() 
+                        st.download_button("⬇️ Unduh File: " + nama_file_unduh, data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
+            else:
+                st.warning("⚠️ Mohon lengkapi minimal satu rangkaian aset untuk dijahit.")
+
+# ==========================================
+# LOGIKA MENU 3 (GENERATOR WATERMARK FOTO)
+# ==========================================
+elif mode_kerja == "📸 Generator Foto Watermark Laporan":
+    st.subheader("📸 Generator Foto Watermark Laporan")
+    
+    uploaded_image = st.file_uploader("Pilih foto lapangan yang masih polos...", type=['jpg', 'jpeg', 'png'])
+
+    if uploaded_image is not None:
+        st.info("✍️ Silakan isi data manual di bawah ini untuk dijahit ke foto:")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            waktu = st.text_input("Waktu (Timemark)", "Rabu, 05 Maret 2025 11:22")
+            koordinat = st.text_input("Koordinat", "-6.957726, 110.432890")
+        with col2:
+            kegiatan = st.text_input("Kegiatan", "Perawatan Penggerak Wesel Elektrik W45B SMT")
+            lokasi = st.text_area("Lokasi", "Kecamatan Semarang Utara, Kota Semarang\nJawa Tengah\nIndonesia")
+
+        if st.button("Jahit Watermark ke Foto", use_container_width=True):
+            image_wm = Image.open(uploaded_image)
+            draw = ImageDraw.Draw(image_wm)
+            
+            teks_watermark = f"{waktu}\n{koordinat}\n{lokasi}\n{kegiatan}"
+            
+            try:
+                font = ImageFont.truetype("arial.ttf", 45)
+            except IOError:
+                font = ImageFont.load_default()
+                
+            margin_x = 30
+            margin_y = image_wm.height - 250 
+
+            # Outline bayangan hitam
+            for adj_x in [-2, -1, 0, 1, 2]:
+                for adj_y in [-2, -1, 0, 1, 2]:
+                    draw.text((margin_x + adj_x, margin_y + adj_y), teks_watermark, font=font, fill="black")
                     
-                    nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                    
-                    st.balloons() 
-                    st.download_button("⬇️ Unduh File: " + nama_file_unduh, data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
-        else:
-            st.warning("⚠️ Mohon lengkapi minimal satu rangkaian aset untuk dijahit.")
+            # Teks utama putih
+            draw.text((margin_x, margin_y), teks_watermark, font=font, fill="white")
+            
+            st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
+
+            buf_img = io.BytesIO()
+            image_wm.save(buf_img, format="JPEG")
+            byte_im = buf_img.getvalue()
+            
+            st.download_button(
+                label="⬇️ Unduh Foto Laporan",
+                data=byte_im,
+                file_name="Laporan_Watermark_Sintel.jpg",
+                mime="image/jpeg",
+                use_container_width=True
+            )
