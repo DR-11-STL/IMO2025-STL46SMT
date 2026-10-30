@@ -229,15 +229,16 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             image_wm = Image.open(uploaded_image)
             draw = ImageDraw.Draw(image_wm)
             
-            teks_watermark = f"{waktu}\n{koordinat}\n{lokasi}\n{kegiatan}"
+            # Format teks diberi spasi antar bagian persis seperti contoh Timemark Verified
+            teks_watermark = f"{waktu}\n\n{lokasi}\n\n{koordinat}\n\n{kegiatan}"
             
-            # Membuat ukuran font dinamis (3.5% dari lebar gambar)
-            ukuran_font = int(image_wm.width * 0.035)
-            if ukuran_font < 30:
-                ukuran_font = 30
+            # Perbesar font menjadi 4.5% dari sisi terkecil foto agar mantap dan proporsional
+            dimensi_dasar = min(image_wm.width, image_wm.height)
+            ukuran_font = int(dimensi_dasar * 0.045)
+            if ukuran_font < 40: 
+                ukuran_font = 40
             
             try:
-                # Menggunakan font standar yang tersedia di server Streamlit
                 font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
             except IOError:
                 try:
@@ -245,17 +246,35 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
                 except IOError:
                     font = ImageFont.load_default()
                     
-            # Mengatur margin agar selalu pas di sudut kiri bawah
-            margin_x = int(image_wm.width * 0.03)
-            margin_y = image_wm.height - int(ukuran_font * 5.5)
-
-            # Outline bayangan hitam
-            for adj_x in [-2, -1, 0, 1, 2]:
-                for adj_y in [-2, -1, 0, 1, 2]:
-                    draw.text((margin_x + adj_x, margin_y + adj_y), teks_watermark, font=font, fill="black")
+            # Pindah posisi ke kiri atas dengan margin 5% dari pinggir gambar
+            margin_x = int(image_wm.width * 0.05)
+            margin_y = int(image_wm.height * 0.05)
+            
+            # Hitung tinggi total blok teks untuk menyesuaikan panjang garis biru
+            try:
+                bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=15)
+                tinggi_teks_total = bbox[3] - bbox[1]
+            except AttributeError:
+                tinggi_teks_total = (teks_watermark.count('\n') + 1) * int(ukuran_font * 1.3)
+            
+            # Gambar garis vertikal biru tebal di sebelah kiri
+            lebar_garis = int(ukuran_font * 0.3)
+            draw.rectangle(
+                [margin_x, margin_y, margin_x + lebar_garis, margin_y + tinggi_teks_total],
+                fill="blue"
+            )
+            
+            # Geser koordinat teks sedikit ke kanan dari garis biru
+            text_x = margin_x + lebar_garis + int(ukuran_font * 0.6)
+            text_y = margin_y
+            
+            # Outline bayangan hitam yang tebal agar kontras di latar terang/gelap
+            for adj_x in [-3, -2, -1, 0, 1, 2, 3]:
+                for adj_y in [-3, -2, -1, 0, 1, 2, 3]:
+                    draw.multiline_text((text_x + adj_x, text_y + adj_y), teks_watermark, font=font, fill="black", spacing=15)
                     
-            # Teks utama putih
-            draw.text((margin_x, margin_y), teks_watermark, font=font, fill="white")
+            # Cetak teks putih utama
+            draw.multiline_text((text_x, text_y), teks_watermark, font=font, fill="white", spacing=15)
             
             st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
 
