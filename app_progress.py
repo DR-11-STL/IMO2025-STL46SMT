@@ -229,19 +229,27 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             image_wm = Image.open(uploaded_image)
             draw = ImageDraw.Draw(image_wm)
             
-            # Format teks diberi spasi ekstra 
-            teks_watermark = f"{waktu}\n\n{lokasi}\n\n{koordinat}\n\n{kegiatan}"
-            
-            # Hitung ukuran font proporsional (4.5% dari dimensi terkecil foto)
-            dimensi_dasar = min(image_wm.width, image_wm.height)
-            ukuran_font = int(dimensi_dasar * 0.045)
-            if ukuran_font < 40: 
-                ukuran_font = 40
-            
-            # --- SOLUSI FINAL: DOWNLOAD FONT KE MEMORI ---
             import urllib.request
+            import textwrap # Modul wajib untuk melipat teks otomatis
+            
+            # 1. Atur Ulang Ukuran Font (Diturunkan skalanya agar lebih rapi)
+            dimensi_dasar = min(image_wm.width, image_wm.height)
+            ukuran_font = int(dimensi_dasar * 0.028)
+            if ukuran_font < 20: 
+                ukuran_font = 20
+                
+            # 2. Fitur Pelipat Teks Otomatis (Auto-Wrap)
+            # Menghitung batas jumlah huruf per baris (maksimal 80% dari lebar foto)
+            batas_karakter = int((image_wm.width * 0.80) / (ukuran_font * 0.55))
+            
+            lokasi_lipat = "\n".join(textwrap.wrap(lokasi, width=batas_karakter))
+            kegiatan_lipat = "\n".join(textwrap.wrap(kegiatan, width=batas_karakter))
+            
+            # Teks siap cetak dengan komponen yang sudah bisa melipat ke bawah
+            teks_watermark = f"{waktu}\n\n{lokasi_lipat}\n\n{koordinat}\n\n{kegiatan_lipat}"
+            
+            # 3. Eksekusi Unduh Font
             try:
-                # Mengambil font Roboto Medium langsung dari repositori publik
                 url_font = "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Medium.ttf"
                 req = urllib.request.Request(url_font, headers={'User-Agent': 'Mozilla/5.0'})
                 respon = urllib.request.urlopen(req, timeout=5)
@@ -258,7 +266,7 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             margin_y = int(image_wm.height * 0.05)
             spacing_teks = int(ukuran_font * 0.3)
             
-            # Menghitung tinggi teks menggunakan metode yang aman untuk semua versi font
+            # Menghitung tinggi akhir teks yang sudah dilipat
             try:
                 bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=spacing_teks)
                 tinggi_teks_total = bbox[3] - bbox[1]
@@ -268,22 +276,22 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
                 else:
                     tinggi_teks_total = (teks_watermark.count('\n') + 1) * 15 
             
-            # Gambar garis vertikal biru tebal di sebelah kiri
+            # Gambar garis vertikal biru penanda
             lebar_garis = int(ukuran_font * 0.25)
-            if lebar_garis < 10: lebar_garis = 10
+            if lebar_garis < 5: lebar_garis = 5
             
             draw.rectangle(
                 [margin_x, margin_y, margin_x + lebar_garis, margin_y + tinggi_teks_total],
                 fill="blue"
             )
             
-            # Geser koordinat teks ke kanan agar tidak menabrak garis biru
-            text_x = margin_x + lebar_garis + int(ukuran_font * 0.5)
+            # Geser teks ke kanan sedikit agar tidak menabrak garis biru
+            text_x = margin_x + lebar_garis + int(ukuran_font * 0.6)
             text_y = margin_y
             
-            # Outline bayangan hitam tebal
-            for adj_x in [-3, -2, -1, 0, 1, 2, 3]:
-                for adj_y in [-3, -2, -1, 0, 1, 2, 3]:
+            # Outline bayangan hitam
+            for adj_x in [-2, -1, 0, 1, 2]:
+                for adj_y in [-2, -1, 0, 1, 2]:
                     draw.multiline_text((text_x + adj_x, text_y + adj_y), teks_watermark, font=font, fill="black", spacing=spacing_teks)
                     
             # Cetak teks putih utama
