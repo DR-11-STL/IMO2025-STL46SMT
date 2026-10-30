@@ -238,39 +238,33 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             if ukuran_font < 40: 
                 ukuran_font = 40
             
-            # MENCARI ALAMAT FONT LANGSUNG DI SERVER LINUX STREAMLIT
-            font_paths = [
-                "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-                "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-                "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
-                "DejaVuSans.ttf",
-                "LiberationSans-Regular.ttf",
-                "arial.ttf"
-            ]
-            
-            font = None
-            for fp in font_paths:
+            # --- SOLUSI FINAL: DOWNLOAD FONT KE MEMORI ---
+            import urllib.request
+            try:
+                # Mengambil font Roboto Medium langsung dari repositori publik
+                url_font = "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Medium.ttf"
+                req = urllib.request.Request(url_font, headers={'User-Agent': 'Mozilla/5.0'})
+                respon = urllib.request.urlopen(req, timeout=5)
+                font_bytes = io.BytesIO(respon.read())
+                font = ImageFont.truetype(font_bytes, ukuran_font)
+            except Exception:
                 try:
-                    font = ImageFont.truetype(fp, ukuran_font)
-                    break # Berhenti mencari jika font berhasil dimuat
-                except IOError:
-                    pass
-                    
-            if font is None:
-                font = ImageFont.load_default()
+                    font = ImageFont.truetype("arial.ttf", ukuran_font)
+                except:
+                    font = ImageFont.load_default()
             
             # Margin posisi kiri atas
             margin_x = int(image_wm.width * 0.05)
             margin_y = int(image_wm.height * 0.05)
             spacing_teks = int(ukuran_font * 0.3)
             
-            # Menghitung tinggi total teks secara akurat untuk memotong garis biru
+            # Menghitung tinggi teks menggunakan metode yang aman untuk semua versi font
             try:
                 bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=spacing_teks)
                 tinggi_teks_total = bbox[3] - bbox[1]
             except AttributeError:
                 if font != ImageFont.load_default():
-                    tinggi_teks_total = (teks_watermark.count('\n') + 1) * int(ukuran_font * 1.1)
+                    tinggi_teks_total = (teks_watermark.count('\n') + 1) * int(ukuran_font * 1.3)
                 else:
                     tinggi_teks_total = (teks_watermark.count('\n') + 1) * 15 
             
