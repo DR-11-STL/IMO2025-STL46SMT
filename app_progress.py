@@ -231,13 +231,23 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             
             teks_watermark = f"{waktu}\n{koordinat}\n{lokasi}\n{kegiatan}"
             
+            # Membuat ukuran font dinamis (3.5% dari lebar gambar)
+            ukuran_font = int(image_wm.width * 0.035)
+            if ukuran_font < 30:
+                ukuran_font = 30
+            
             try:
-                font = ImageFont.truetype("arial.ttf", 45)
+                # Menggunakan font standar yang tersedia di server Streamlit
+                font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
             except IOError:
-                font = ImageFont.load_default()
-                
-            margin_x = 30
-            margin_y = image_wm.height - 250 
+                try:
+                    font = ImageFont.truetype("arial.ttf", ukuran_font)
+                except IOError:
+                    font = ImageFont.load_default()
+                    
+            # Mengatur margin agar selalu pas di sudut kiri bawah
+            margin_x = int(image_wm.width * 0.03)
+            margin_y = image_wm.height - int(ukuran_font * 5.5)
 
             # Outline bayangan hitam
             for adj_x in [-2, -1, 0, 1, 2]:
