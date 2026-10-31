@@ -24,7 +24,7 @@ if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
-    st.title("IMO2025 📑 STL4.6SMT")
+    st.title("IMO2025 📑 DR")
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
     
     username = st.text_input("Username")
@@ -121,7 +121,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
     return output_pdf.getvalue()
 
 # --- Antarmuka Web Utama ---
-st.title("IMO2025 📑 STL4.6SMT ")
+st.title("IMO2025 📑 dR ")
 
 col_kiri, col_kanan = st.columns([4, 1])
 with col_kanan:
