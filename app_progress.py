@@ -57,14 +57,21 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. Menghapus HANYA kotak pink anotasi, membiarkan foto utuh
+    # 1. Menghapus KHUSUS kotak pink anotasi (tanpa menyentuh foto)
     for halaman in doc:
+        daftar_anotasi = []
         for anotasi in halaman.annots():
-            tipe_anotasi = anotasi.type[1]
-            isi_teks = anotasi.info.get("content", "")
+            daftar_anotasi.append(anotasi)
             
-            if tipe_anotasi in ["FreeText", "Text"] or isi_teks:
+        for anotasi in daftar_anotasi:
+            tipe_anotasi = anotasi.type[1]
+            # Hanya mengeksekusi hapus untuk tipe kotak teks, pop-up komentar, dan kotak shape
+            # Tipe lain seperti "Stamp" (foto/gambar) akan diabaikan dan dibiarkan utuh
+            if tipe_anotasi in ["FreeText", "Text", "Popup", "Square"]:
                 halaman.delete_annot(anotasi)
+                
+    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
+    # --- (Biarkan kode bagian bawah ini tetap sama) ---
             
     # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
     if len(data_rangkaian) > 0:
