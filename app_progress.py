@@ -57,7 +57,7 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. Menghapus KHUSUS kotak pink anotasi (tanpa menyentuh foto)
+    # 1. Hapus SEMUA jenis anotasi, KECUALI foto (Stamp)
     for halaman in doc:
         daftar_anotasi = []
         for anotasi in halaman.annots():
@@ -65,10 +65,71 @@ def proses_dokumen(pdf_file, data_rangkaian):
             
         for anotasi in daftar_anotasi:
             tipe_anotasi = anotasi.type[1]
-            # Hanya mengeksekusi hapus untuk tipe kotak teks, pop-up komentar, dan kotak shape
-            # Tipe lain seperti "Stamp" (foto/gambar) akan diabaikan dan dibiarkan utuh
-            if tipe_anotasi in ["FreeText", "Text", "Popup", "Square"]:
+            
+            # Jika anotasinya BUKAN berjenis gambar/foto (Stamp), langsung basmi!
+            if tipe_anotasi != "Stamp":
                 halaman.delete_annot(anotasi)
+                
+    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
+    if len(data_rangkaian) > 0:
+        lebar_halaman, tinggi_halaman = 595, 842
+        lebar_gambar = 150
+        tinggi_gambar = 150
+        spasi = 30
+        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2 
+        
+        y_pos_awal = 60
+        y_pos = y_pos_awal
+        items_per_page = 0
+        
+        halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
+        
+        for data in data_rangkaian:
+            if items_per_page >= 3:
+                halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
+                y_pos = y_pos_awal
+                items_per_page = 0
+                
+            halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"Nama Aset: {data['nama_aset']}", fontsize=14, color=(0, 0, 0))
+            
+            y_gambar = y_pos + 15
+            koleksi = [
+                {"file": data["img_0"], "label": "0%"},
+                {"file": data["img_50"], "label": "50%"},
+                {"file": data["img_100"], "label": "100%"}
+            ]
+            
+            for i, item in enumerate(koleksi):
+                img = Image.open(item["file"])
+                img_square = crop_center_square(img)
+                
+                img_byte_arr = io.BytesIO()
+                img_square.save(img_byte_arr, format='JPEG')
+                img_bytes = img_byte_arr.getvalue()
+                
+                x0 = mulai_x + i * (lebar_gambar + spasi)
+                y0 = y_gambar
+                x1 = x0 + lebar_gambar
+                y1 = y0 + tinggi_gambar
+                rect = fitz.Rect(x0, y0, x1, y1)
+                
+                halaman_baru.insert_image(rect, stream=img_bytes)
+                
+                titik_teks = fitz.Point(x0 + 60, y1 + 20)
+                halaman_baru.insert_text(titik_teks, item["label"], fontsize=14, color=(0, 0, 0))
+                
+            y_pos += 210  
+            items_per_page += 1
+        
+    output_pdf = io.BytesIO()
+    
+    # --- PERINTAH SAPU BERSIH MEMORI (GARBAGE COLLECTION) ---
+    # garbage=4 memastikan seluruh data objek anotasi pink yang tersembunyi
+    # ikut terhapus permanen dari struktur file PDF.
+    doc.save(output_pdf, garbage=4, deflate=True)
+    doc.close()
+    
+    return output_pdf.getvalue()
                 
     # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
     # --- (Biarkan kode bagian bawah ini tetap sama) ---
