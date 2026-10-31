@@ -58,25 +58,30 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. KODE ASSASSIN: Membedakan Foto Asli dengan "Stamp" Palsu Foxit
+    # 1. KODE RADAR UKURAN: Membedakan Kotak Pink Foxit vs Foto Asli
     for halaman in doc:
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
                 tipe_anotasi = anotasi.type[1]
                 
-                # Menggali teks rahasia di dalam metadata anotasi (dijadikan huruf besar semua)
-                info = anotasi.info
-                teks_tersembunyi = (str(info.get("content", "")) + str(info.get("title", "")) + str(info.get("subject", ""))).upper()
-                
-                # EKSEKUSI PEMBASMIAN:
-                # 1. Hapus jika BUKAN Stamp.
-                # 2. Jika dia "Stamp", periksa isinya! Kalau ada kata "STL" atau "SMT", langsung basmi!
-                # Foto aslimu akan aman karena metadata foto tidak mengandung teks tersebut.
-                if tipe_anotasi != "Stamp" or "STL" in teks_tersembunyi or "SMT" in teks_tersembunyi:
+                # Jika BUKAN Stamp, pasti itu coretan/teks/popup -> HAPUS
+                if tipe_anotasi != "Stamp":
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
-                    break # Hentikan putaran sejenak, lalu ulangi agar bersih total
+                    break
+                else:
+                    # JIKA STAMP: Cek fisiknya! Kotak pink itu pipih, foto itu besar.
+                    tinggi_objek = anotasi.rect.height
+                    info = anotasi.info
+                    # HANYA cek content dan subject. JANGAN cek author/title karena nama PC-mu mungkin "STL-SMT"
+                    isi_teks = (str(info.get("content", "")) + str(info.get("subject", ""))).upper()
+                    
+                    # Jika tingginya sangat pendek (< 80) ATAU teksnya mengandung STL/SMT
+                    if tinggi_objek < 80 or "STL" in isi_teks or "SMT" in isi_teks:
+                        halaman.delete_annot(anotasi)
+                        ada_yang_dihapus = True
+                        break
             
             if not ada_yang_dihapus:
                 break
@@ -90,7 +95,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
         # Mengepel bersih memori halaman
         halaman.clean_contents()
                 
-    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
+    # 2. Menjahit lampiran foto progres
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar = 150
@@ -143,8 +148,8 @@ def proses_dokumen(pdf_file, data_rangkaian):
         
     output_pdf = io.BytesIO()
     
-    # --- PERINTAH SAPU BERSIH MEMORI (GARBAGE COLLECTION) ---
-    doc.save(output_pdf, garbage=4, deflate=True)
+    # KUNCI PERBAIKAN: Turunkan level garbage ke 2 agar foto yang baru dijahit tidak disedot sistem!
+    doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     
     return output_pdf.getvalue()
