@@ -57,38 +57,94 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. KODE NUKLIR: Pembersihan Total (Anotasi, Widget, dan Link Foxit)
+    # 1. KODE ASSASSIN: Membedakan Foto Asli dengan "Stamp" Palsu Foxit
     for halaman in doc:
-        # A. Basmi Widget (Form Field/Objek yang sering dipakai Foxit untuk review)
-        try:
-            for widget in halaman.widgets():
-                halaman.delete_widget(widget)
-        except Exception:
-            pass
-            
-        # B. Basmi Link (Tautan interaktif yang tersembunyi)
-        try:
-            for link in halaman.links():
-                halaman.delete_link(link)
-        except Exception:
-            pass
-            
-        # C. Basmi Anotasi Bertingkat (Looping Purge)
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                # Tetap lindungi foto lampiran yang terbaca sebagai "Stamp"
-                if anotasi.type[1] != "Stamp":
+                tipe_anotasi = anotasi.type[1]
+                
+                # Menggali teks rahasia di dalam metadata anotasi (dijadikan huruf besar semua)
+                info = anotasi.info
+                teks_tersembunyi = (str(info.get("content", "")) + str(info.get("title", "")) + str(info.get("subject", ""))).upper()
+                
+                # EKSEKUSI PEMBASMIAN:
+                # 1. Hapus jika BUKAN Stamp.
+                # 2. Jika dia "Stamp", periksa isinya! Kalau ada kata "STL" atau "SMT", langsung basmi!
+                # Foto aslimu akan aman karena metadata foto tidak mengandung teks tersebut.
+                if tipe_anotasi != "Stamp" or "STL" in teks_tersembunyi or "SMT" in teks_tersembunyi:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
-                    break # Hentikan putaran, ulang dari awal untuk mencari pop-up anak
+                    break # Hentikan putaran sejenak, lalu ulangi agar bersih total
             
-            # Jika halaman sudah benar-benar bersih dari target, hentikan loop
             if not ada_yang_dihapus:
                 break
                 
-        # D. Pel super bersih untuk cache sisa aliran data di halaman tersebut
+        # Bersihkan widget dan tautan tersembunyi
+        try:
+            for widget in halaman.widgets():
+                halaman.delete_widget(widget)
+        except Exception: pass
+        
+        # Mengepel bersih memori halaman
         halaman.clean_contents()
+                
+    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
+    if len(data_rangkaian) > 0:
+        lebar_halaman, tinggi_halaman = 595, 842
+        lebar_gambar = 150
+        tinggi_gambar = 150
+        spasi = 30
+        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2 
+        
+        y_pos_awal = 60
+        y_pos = y_pos_awal
+        items_per_page = 0
+        
+        halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
+        
+        for data in data_rangkaian:
+            if items_per_page >= 3:
+                halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
+                y_pos = y_pos_awal
+                items_per_page = 0
+                
+            halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"Nama Aset: {data['nama_aset']}", fontsize=14, color=(0, 0, 0))
+            
+            y_gambar = y_pos + 15
+            koleksi = [
+                {"file": data["img_0"], "label": "0%"},
+                {"file": data["img_50"], "label": "50%"},
+                {"file": data["img_100"], "label": "100%"}
+            ]
+            
+            for i, item in enumerate(koleksi):
+                img = Image.open(item["file"])
+                img_square = crop_center_square(img)
+                
+                img_byte_arr = io.BytesIO()
+                img_square.save(img_byte_arr, format='JPEG')
+                img_bytes = img_byte_arr.getvalue()
+                
+                x0 = mulai_x + i * (lebar_gambar + spasi)
+                y0 = y_gambar
+                x1 = x0 + lebar_gambar
+                y1 = y0 + tinggi_gambar
+                rect = fitz.Rect(x0, y0, x1, y1)
+                
+                halaman_baru.insert_image(rect, stream=img_bytes)
+                
+                titik_teks = fitz.Point(x0 + 60, y1 + 20)
+                halaman_baru.insert_text(titik_teks, item["label"], fontsize=14, color=(0, 0, 0))
+                
+            y_pos += 210  
+            items_per_page += 1
+        
+    output_pdf = io.BytesIO()
+    doc.save(output_pdf, garbage=4, deflate=True)
+    doc.close()
+    
+    return output_pdf.getvalue()
                 
     # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
     if len(data_rangkaian) > 0:
