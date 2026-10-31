@@ -45,12 +45,14 @@ if not st.session_state.login_sukses:
 
 def crop_center_square(image):
     width, height = image.size
-    new_size = min(width, height)
-    left = (width - new_size) / 2
-    top = (height - new_size) / 2
-    right = (width + new_size) / 2
-    bottom = (height + new_size) / 2
-    return image.crop((left, top, right, bottom))
+    # Mengambil dimensi terbesar sebagai patokan agar kualitas gambar tetap tajam
+    max_dim = max(width, height)
+    
+    # Memaksa (resize) gambar menjadi persegi 1:1 secara utuh
+    # Tanpa memotong (crop) dan tanpa menambah latar belakang warna
+    new_image = image.resize((max_dim, max_dim))
+    
+    return new_image
 
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
