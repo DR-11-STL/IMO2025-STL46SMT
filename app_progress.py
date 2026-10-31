@@ -58,41 +58,29 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. KODE RADAR UKURAN: Membedakan Kotak Pink Foxit vs Foto Asli
+    # 1. PEMBASMIAN TOTAL: Filter Anotasi & Redaksi Fisik
     for halaman in doc:
+        # A. Basmi anotasi bandel yang masih tersisa
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                tipe_anotasi = anotasi.type[1]
-                
-                # Jika BUKAN Stamp, pasti itu coretan/teks/popup -> HAPUS
-                if tipe_anotasi != "Stamp":
+                # Hapus anotasi. Jika menyamar jadi Stamp/Foto, hapus yang ukurannya pipih (< 50)
+                if anotasi.type[1] != "Stamp" or anotasi.rect.height < 50:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
                     break
-                else:
-                    # JIKA STAMP: Cek fisiknya! Kotak pink itu pipih, foto itu besar.
-                    tinggi_objek = anotasi.rect.height
-                    info = anotasi.info
-                    # HANYA cek content dan subject. JANGAN cek author/title karena nama PC-mu mungkin "STL-SMT"
-                    isi_teks = (str(info.get("content", "")) + str(info.get("subject", ""))).upper()
-                    
-                    # Jika tingginya sangat pendek (< 80) ATAU teksnya mengandung STL/SMT
-                    if tinggi_objek < 80 or "STL" in isi_teks or "SMT" in isi_teks:
-                        halaman.delete_annot(anotasi)
-                        ada_yang_dihapus = True
-                        break
-            
             if not ada_yang_dihapus:
                 break
                 
-        # Bersihkan widget dan tautan tersembunyi
-        try:
-            for widget in halaman.widgets():
-                halaman.delete_widget(widget)
-        except Exception: pass
-        
-        # Mengepel bersih memori halaman
+        # B. REDAKSI FISIK: Menghancurkan kotak pink yang sudah menyatu (flatten) dengan halaman
+        pencarian = halaman.search_for("STL-SMT")
+        for area in pencarian:
+            # Perlebar kotak putih ke kanan (+180) untuk menutupi seluruh ekor tanggal dan jam
+            # Perlebar sedikit ke atas dan bawah (-5, +5) untuk menutupi garis border pink
+            kotak_redaksi = fitz.Rect(area.x0 - 5, area.y0 - 5, area.x1 + 180, area.y1 + 5)
+            halaman.add_redact_annot(kotak_redaksi, fill=(1, 1, 1)) 
+            
+        halaman.apply_redactions() # Eksekusi penimpaan putih murni permanen
         halaman.clean_contents()
                 
     # 2. Menjahit lampiran foto progres
@@ -147,8 +135,6 @@ def proses_dokumen(pdf_file, data_rangkaian):
             items_per_page += 1
         
     output_pdf = io.BytesIO()
-    
-    # KUNCI PERBAIKAN: Turunkan level garbage ke 2 agar foto yang baru dijahit tidak disedot sistem!
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     
