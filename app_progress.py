@@ -10,6 +10,15 @@ PASS_VALID = "IMO2025"
 
 # --- SISTEM LOGIN ---
 st.set_page_config(page_title="Generator Lampiran Progres", page_icon="📑", layout="wide")
+# --- TRIK MENYEMBUNYIKAN MENU & IKON GITHUB ---
+sembunyikan_elemen = """
+<style>
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+</style>
+"""
+st.markdown(sembunyikan_elemen, unsafe_allow_html=True)
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
