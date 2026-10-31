@@ -24,7 +24,7 @@ if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
-    st.title("IMO2025 📑 DR")
+    st.title("IMO2025 📑 dR")
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
     
     username = st.text_input("Username")
