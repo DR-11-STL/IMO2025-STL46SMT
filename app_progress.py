@@ -31,21 +31,16 @@ html, body, [class*="css"], .stMarkdown p, label {
     color: #E2E8F0 !important;
 }
 
-/* Kustomisasi Judul Utama dengan Warna Solid Asli KAI */
+/* Kustomisasi Judul Utama dengan Biru KAI + Garis Tepi Putih */
 .title-kai {
     text-align: center;
     font-size: 3.5rem;
     font-weight: 900;
-    margin-bottom: 30px; /* Jarak ke bawah ditambah karena subtitle dihapus */
+    margin-bottom: 30px; 
     padding-bottom: 0px;
-    color: #ec6923; /* Oranye KAI Solid */
-    text-shadow: 2px 2px 8px rgba(236, 105, 35, 0.4); 
-}
-
-/* Kustomisasi Teks dR dengan Biru Gelap KAI */
-.title-kai .biru-kai {
-    color: #282562; /* Biru Gelap KAI Solid murni tanpa garis tepi */
-    text-shadow: none;
+    color: #282562; /* Biru Gelap KAI */
+    -webkit-text-stroke: 1.5px #FFFFFF; /* Garis tepi putih */
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8); /* Shadow gelap agar lebih menonjol */
 }
 
 /* Kustomisasi Tombol Utama: Warna Dasar Biru Gelap KAI */
@@ -109,8 +104,7 @@ if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
-    # Subtitle dihapus sepenuhnya dari halaman login
-    st.markdown("<h1 class='title-kai'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='title-kai'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
     
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
     
@@ -222,8 +216,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
 # --- Antarmuka Web Utama ---
 col_kiri, col_kanan = st.columns([4, 1])
 with col_kiri:
-    # Subtitle juga dihapus dari halaman utama
-    st.markdown("<h1 class='title-kai' style='text-align: left;'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='title-kai' style='text-align: left;'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
 with col_kanan:
     st.write("")
     if st.button("🚪 Keluar", use_container_width=True):
@@ -321,10 +314,10 @@ if "Bersihkan" in mode_kerja:
                         .track-lari {
                           overflow: hidden;
                           width: 100%;
-                          background-color: rgba(40, 37, 98, 0.5); 
+                          background-color: rgba(40, 37, 98, 0.5); /* Warna trek biru gelap KAI */
                           padding: 5px 0;
                           border-radius: 8px;
-                          border-right: 12px solid #ec6923; 
+                          border-right: 12px solid #ec6923; /* Pita Garis Finish Oranye KAI */
                           border-bottom: 3px dashed #64748B;
                           margin-bottom: 15px;
                         }
