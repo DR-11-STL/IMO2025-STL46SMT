@@ -36,26 +36,16 @@ html, body, [class*="css"], .stMarkdown p, label {
     text-align: center;
     font-size: 3.5rem;
     font-weight: 900;
-    margin-bottom: 0px;
+    margin-bottom: 30px; /* Jarak ke bawah ditambah karena subtitle dihapus */
     padding-bottom: 0px;
     color: #ec6923; /* Oranye KAI Solid */
-    text-shadow: 2px 2px 8px rgba(236, 105, 35, 0.4); /* Efek cahaya (Glow) tipis */
+    text-shadow: 2px 2px 8px rgba(236, 105, 35, 0.4); 
 }
 
-/* Kustomisasi Teks dR dengan Biru Gelap KAI + Garis Tepi Putih */
+/* Kustomisasi Teks dR dengan Biru Gelap KAI */
 .title-kai .biru-kai {
-    color: #282562; /* Biru Gelap KAI Solid */
-    -webkit-text-stroke: 1.5px #E2E8F0; /* Garis tepi agar tidak tenggelam di background hitam */
+    color: #282562; /* Biru Gelap KAI Solid murni tanpa garis tepi */
     text-shadow: none;
-}
-
-.subtitle-kai {
-    text-align: center;
-    color: #94A3B8 !important;
-    font-size: 1.2rem;
-    font-weight: 500;
-    margin-bottom: 30px;
-    letter-spacing: 1px;
 }
 
 /* Kustomisasi Tombol Utama: Warna Dasar Biru Gelap KAI */
@@ -119,8 +109,8 @@ if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
+    # Subtitle dihapus sepenuhnya dari halaman login
     st.markdown("<h1 class='title-kai'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitle-kai'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
     
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
     
@@ -232,8 +222,8 @@ def proses_dokumen(pdf_file, data_rangkaian):
 # --- Antarmuka Web Utama ---
 col_kiri, col_kanan = st.columns([4, 1])
 with col_kiri:
-    st.markdown("<h1 class='title-kai'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p class='subtitle-kai' style='text-align: left;'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
+    # Subtitle juga dihapus dari halaman utama
+    st.markdown("<h1 class='title-kai' style='text-align: left;'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
 with col_kanan:
     st.write("")
     if st.button("🚪 Keluar", use_container_width=True):
