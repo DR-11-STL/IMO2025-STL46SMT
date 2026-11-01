@@ -237,7 +237,7 @@ if "Bersihkan" in mode_kerja:
 # LOGIKA MENU 3 (GENERATOR WATERMARK FOTO)
 # ==========================================
 elif "Watermark" in mode_kerja:
-    st.subheader("📸 Generator Foto Watermark")
+    st.subheader("📸 Foto Watermark")
     
     uploaded_image = st.file_uploader("Pilih foto kegiatan yang masih polos...", type=['jpg', 'jpeg', 'png'])
 
