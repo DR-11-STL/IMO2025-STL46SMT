@@ -51,31 +51,39 @@ def crop_center_square(image):
     max_dim = max(width, height)
     
     # Memaksa (resize) gambar menjadi persegi 1:1 secara utuh
-    # Tanpa memotong (crop) dan tanpa menambah latar belakang warna
     new_image = image.resize((max_dim, max_dim))
     return new_image
 
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. BEDAH PRESISI KECIL: Menutup tepat di titik kotak pink "STL-SMT"
     for halaman in doc:
-        # Bersihkan anotasi standar jika ada
+        # 1. RADAR PENDETEKSI: Bedakan Halaman Checklist vs Halaman Lampiran Foto
+        teks_halaman = halaman.get_text().upper()
+        # Jika ada kata-kata khas form KAI ini, berarti ini halaman tabel. JANGAN ditimpa!
+        is_checklist = "REFER" in teks_halaman or "DIKETAHUI" in teks_halaman or "PERALATAN" in teks_halaman
+        
+        # 2. BERSIHKAN ANOTASI STANDAR (Berlaku untuk semua halaman)
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                if anotasi.type[1] != "Stamp" or anotasi.rect.height < 50:
+                info = anotasi.info
+                isi_teks = (str(info.get("content", "")) + str(info.get("subject", ""))).upper()
+                
+                # Hapus anotasi normal. Jika dia menyamar jadi Stamp/Foto, cek apakah ada kata STL/SMT
+                if anotasi.type[1] != "Stamp" or "STL" in isi_teks or "SMT" in isi_teks:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
                     break
             if not ada_yang_dihapus:
                 break
                 
-        # Tutup HANYA area kecil pojok kanan atas tempat kotak pink nongkrong 
-        # Koordinat spesifik ini tidak merusak isi lain
-        kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
-        halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
-        halaman.apply_redactions()
+        # 3. REDAKSI FISIK / PENIMPAAN (HANYA JALAN DI HALAMAN LAMPIRAN FOTO)
+        if not is_checklist:
+            # Koordinat ini hanya akan dieksekusi di halaman foto agar checklist tidak krowak
+            kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
+            halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
+            halaman.apply_redactions()
         
         halaman.clean_contents()
                 
@@ -131,7 +139,6 @@ def proses_dokumen(pdf_file, data_rangkaian):
             items_per_page += 1
         
     output_pdf = io.BytesIO()
-    # garbage=2 (Level aman agar foto tidak disedot sistem)
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     
@@ -159,7 +166,6 @@ st.divider()
 # ==========================================
 # LOGIKA MENU 1 & 2 (PEMROSESAN PDF)
 # ==========================================
-# Cek string agar kebal terhadap kesalahan baca emoji di HP
 if "Bersihkan" in mode_kerja:
     pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
     data_siap_proses = []
@@ -202,7 +208,7 @@ if "Bersihkan" in mode_kerja:
                         hasil_pdf_bytes = proses_dokumen(pdf_file, [])
                         nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                         
-                        st.success("Selesai! Kotak pink berhasil dihapus dan foto laporan tetap utuh.")
+                        st.success("Selesai! Kotak pink berhasil dihapus dan tabel laporan aman utuh.")
                         st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
                     else:
                         zip_buffer = io.BytesIO()
@@ -212,7 +218,7 @@ if "Bersihkan" in mode_kerja:
                                 nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                                 zip_file.writestr(nama_file_unduh, hasil_pdf_bytes)
                         
-                        st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi.")
+                        st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi tanpa merusak tabel.")
                         st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
                         
         elif "Jahit" in mode_kerja:
