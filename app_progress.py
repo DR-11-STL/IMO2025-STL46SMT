@@ -2,7 +2,9 @@ import streamlit as st
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont
 import io
-import zipfile  # Modul baru untuk membungkus banyak file jadi ZIP
+import zipfile
+import urllib.request
+import textwrap 
 
 # --- KONFIGURASI USERNAME & PASSWORD ---
 USER_VALID = "Sintel46"
@@ -46,51 +48,38 @@ if not st.session_state.login_sukses:
 
 def crop_center_square(image):
     width, height = image.size
-    # Mengambil dimensi terbesar sebagai patokan agar kualitas gambar tetap tajam
     max_dim = max(width, height)
     
     # Memaksa (resize) gambar menjadi persegi 1:1 secara utuh
     # Tanpa memotong (crop) dan tanpa menambah latar belakang warna
     new_image = image.resize((max_dim, max_dim))
-    
     return new_image
 
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. KODE ASSASSIN: Membedakan Foto Asli dengan "Stamp" Palsu Foxit
+    # 1. BEDAH PRESISI KECIL: Menutup tepat di titik kotak pink "STL-SMT"
     for halaman in doc:
+        # Bersihkan anotasi standar jika ada
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                tipe_anotasi = anotasi.type[1]
-                
-                # Menggali teks rahasia di dalam metadata anotasi (dijadikan huruf besar semua)
-                info = anotasi.info
-                teks_tersembunyi = (str(info.get("content", "")) + str(info.get("title", "")) + str(info.get("subject", ""))).upper()
-                
-                # EKSEKUSI PEMBASMIAN:
-                # 1. Hapus jika BUKAN Stamp.
-                # 2. Jika dia "Stamp", periksa isinya! Kalau ada kata "STL" atau "SMT", langsung basmi!
-                # Foto aslimu akan aman karena metadata foto tidak mengandung teks tersebut.
-                if tipe_anotasi != "Stamp" or "STL" in teks_tersembunyi or "SMT" in teks_tersembunyi:
+                if anotasi.type[1] != "Stamp" or anotasi.rect.height < 50:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
-                    break # Hentikan putaran sejenak, lalu ulangi agar bersih total
-            
+                    break
             if not ada_yang_dihapus:
                 break
                 
-        # Bersihkan widget dan tautan tersembunyi
-        try:
-            for widget in halaman.widgets():
-                halaman.delete_widget(widget)
-        except Exception: pass
+        # Tutup HANYA area kecil pojok kanan atas tempat kotak pink nongkrong 
+        # Koordinat spesifik ini tidak merusak isi lain
+        kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
+        halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
+        halaman.apply_redactions()
         
-        # Mengepel bersih memori halaman
         halaman.clean_contents()
                 
-    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
+    # 2. Menjahit lampiran foto progres
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar = 150
@@ -142,9 +131,8 @@ def proses_dokumen(pdf_file, data_rangkaian):
             items_per_page += 1
         
     output_pdf = io.BytesIO()
-    
-    # --- PERINTAH SAPU BERSIH MEMORI (GARBAGE COLLECTION) ---
-    doc.save(output_pdf, garbage=4, deflate=True)
+    # garbage=2 (Level aman agar foto tidak disedot sistem)
+    doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     
     return output_pdf.getvalue()
@@ -171,11 +159,12 @@ st.divider()
 # ==========================================
 # LOGIKA MENU 1 & 2 (PEMROSESAN PDF)
 # ==========================================
-if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres"]:
+# Cek string agar kebal terhadap kesalahan baca emoji di HP
+if "Bersihkan" in mode_kerja:
     pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
     data_siap_proses = []
 
-    if mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
+    if "Jahit" in mode_kerja:
         st.subheader("📸 Form Rangkaian Foto Progres")
         st.write("*Isi maksimal 5 aset. Yang dikosongkan akan dilewati otomatis.*")
 
@@ -205,7 +194,7 @@ if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Ano
 
     # --- EKSEKUSI TOMBOL PROSES PDF ---
     if pdf_inputs:
-        if mode_kerja == "🧹 Hanya Bersihkan Kotak Pink Anotasi":
+        if "Hanya" in mode_kerja:
             if st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
                 with st.spinner("Sedang membersihkan kotak pink pada file PDF..."):
                     if len(pdf_inputs) == 1:
@@ -226,7 +215,7 @@ if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Ano
                         st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi.")
                         st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
                         
-        elif mode_kerja == "🚀 Bersihkan Anotasi & Jahit Foto Progres":
+        elif "Jahit" in mode_kerja:
             if len(pdf_inputs) > 1:
                 st.info("ℹ️ Perhatian: Pada mode jahit foto, sistem hanya akan memproses file PDF yang letaknya paling pertama.")
                 
@@ -247,8 +236,8 @@ if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Ano
 # ==========================================
 # LOGIKA MENU 3 (GENERATOR WATERMARK FOTO)
 # ==========================================
-elif mode_kerja == "📸 Generator Foto Watermark ":
-    st.subheader("📸 Generator Foto Watermark ")
+elif "Watermark" in mode_kerja:
+    st.subheader("📸 Generator Foto Watermark Laporan")
     
     uploaded_image = st.file_uploader("Pilih foto lapangan yang masih polos...", type=['jpg', 'jpeg', 'png'])
 
@@ -257,7 +246,7 @@ elif mode_kerja == "📸 Generator Foto Watermark ":
         
         col1, col2 = st.columns(2)
         with col1:
-            waktu = st.text_input("Waktu (Timemark)", "Rabu, 05 Maret 2025 11:22 WIB")
+            waktu = st.text_input("Waktu (Timemark)", "Rabu, 05 Maret 2025 11:22")
             koordinat = st.text_input("Koordinat", "-6.957726, 110.432890")
         with col2:
             kegiatan = st.text_input("Kegiatan", "Perawatan Penggerak Wesel Elektrik W45B SMT")
@@ -266,9 +255,6 @@ elif mode_kerja == "📸 Generator Foto Watermark ":
         if st.button("Jahit Watermark ke Foto", use_container_width=True):
             image_wm = Image.open(uploaded_image)
             draw = ImageDraw.Draw(image_wm)
-            
-            import urllib.request
-            import textwrap 
             
             dimensi_dasar = min(image_wm.width, image_wm.height)
             ukuran_font = int(dimensi_dasar * 0.028)
@@ -331,9 +317,9 @@ elif mode_kerja == "📸 Generator Foto Watermark ":
             byte_im = buf_img.getvalue()
             
             st.download_button(
-                label="⬇️ Unduh Foto ",
+                label="⬇️ Unduh Foto Laporan",
                 data=byte_im,
-                file_name="Foto_Watermark_Sintel.jpg",
+                file_name="Laporan_Watermark_Sintel.jpg",
                 mime="image/jpeg",
                 use_container_width=True
             )
