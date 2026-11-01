@@ -58,9 +58,9 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. BEDAH KOORDINAT ABSOLUT: Menutup paksa area pojok kanan atas halaman
+    # 1. BEDAH PRESISI KECIL: Menutup tepat di titik kotak pink "STL-SMT"
     for halaman in doc:
-        # Bersihkan anotasi standar terlebih dahulu
+        # Bersihkan anotasi standar jika ada
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
@@ -71,10 +71,10 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
                 
-        # Tutup area pojok kanan atas dengan kotak putih bersih (Redaksi Paksa)
-        # Koordinat (x0, y0, x1, y1) mencakup area tempat kotak pink "STL-SMT" biasa nongkrong
-        kotak_tutup = fitz.Rect(380, 0, 595, 100) 
-        halaman.add_redact_annot(kotak_tutup, fill=(1, 1, 1))
+        # Tutup HANYA area kecil pojok kanan atas tempat kotak pink nongkrong (Lebar pas, tidak merusak isi lain)
+        # Koordinat: x0=430, y0=245, x1=580, y1=290 (area spesifik kotak pink)
+        kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
+        halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
         halaman.apply_redactions()
         
         halaman.clean_contents()
