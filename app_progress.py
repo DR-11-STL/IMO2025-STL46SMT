@@ -31,18 +31,24 @@ html, body, [class*="css"], .stMarkdown p, label {
     color: #E2E8F0 !important;
 }
 
-/* Kustomisasi Judul Utama dengan Gradasi Oranye ke Biru */
+/* Kustomisasi Judul Utama dengan Warna Solid Asli KAI */
 .title-kai {
     text-align: center;
-    background: -webkit-linear-gradient(45deg, #ec6923, #6a65c2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
     font-size: 3.5rem;
     font-weight: 900;
     margin-bottom: 0px;
     padding-bottom: 0px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    color: #ec6923; /* Oranye KAI Solid */
+    text-shadow: 2px 2px 8px rgba(236, 105, 35, 0.4); /* Efek cahaya (Glow) tipis */
 }
+
+/* Kustomisasi Teks dR dengan Biru Gelap KAI + Garis Tepi Putih */
+.title-kai .biru-kai {
+    color: #282562; /* Biru Gelap KAI Solid */
+    -webkit-text-stroke: 1.5px #E2E8F0; /* Garis tepi agar tidak tenggelam di background hitam */
+    text-shadow: none;
+}
+
 .subtitle-kai {
     text-align: center;
     color: #94A3B8 !important;
@@ -113,7 +119,7 @@ if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
-    st.markdown("<h1 class='title-kai'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='title-kai'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle-kai'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
     
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
@@ -144,11 +150,9 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
     for halaman in doc:
-        # 1. RADAR PENDETEKSI: Bedakan Halaman Checklist vs Halaman Lampiran Foto
         teks_halaman = halaman.get_text().upper()
         is_checklist = "REFER" in teks_halaman or "DIKETAHUI" in teks_halaman or "PERALATAN" in teks_halaman
         
-        # 2. BERSIHKAN ANOTASI STANDAR 
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
@@ -162,7 +166,6 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
                 
-        # 3. REDAKSI FISIK (HANYA JALAN DI HALAMAN LAMPIRAN FOTO)
         if not is_checklist:
             kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
             halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
@@ -170,7 +173,6 @@ def proses_dokumen(pdf_file, data_rangkaian):
         
         halaman.clean_contents()
                 
-    # 4. Menjahit lampiran foto progres
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar = 150
@@ -230,7 +232,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
 # --- Antarmuka Web Utama ---
 col_kiri, col_kanan = st.columns([4, 1])
 with col_kiri:
-    st.markdown("<h1 class='title-kai'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 class='title-kai'>IMO2025 📑 <span class='biru-kai'>dR</span></h1>", unsafe_allow_html=True)
     st.markdown("<p class='subtitle-kai' style='text-align: left;'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
 with col_kanan:
     st.write("")
@@ -285,7 +287,6 @@ if "Bersihkan" in mode_kerja:
                 })
             st.divider()
 
-    # --- EKSEKUSI TOMBOL PROSES PDF ---
     if pdf_inputs:
         if "Hanya" in mode_kerja:
             if st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
@@ -318,10 +319,45 @@ if "Bersihkan" in mode_kerja:
                     with st.spinner("Sedang membersihkan PDF dan menjahit lampiran foto..."):
                         pdf_file = pdf_inputs[0] 
                         hasil_pdf_bytes = proses_dokumen(pdf_file, data_siap_proses)
-                        
                         nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                         
-                        st.balloons() 
+                        animasi_lari = """
+                        <style>
+                        @keyframes sprint {
+                          0% { transform: translateX(-50%); opacity: 1; }
+                          95% { transform: translateX(90%); opacity: 1; }
+                          100% { transform: translateX(100%); opacity: 0; }
+                        }
+                        .track-lari {
+                          overflow: hidden;
+                          width: 100%;
+                          background-color: rgba(40, 37, 98, 0.5); 
+                          padding: 5px 0;
+                          border-radius: 8px;
+                          border-right: 12px solid #ec6923; 
+                          border-bottom: 3px dashed #64748B;
+                          margin-bottom: 15px;
+                        }
+                        .pelari {
+                          display: inline-block;
+                          font-size: 50px;
+                          animation: sprint 2.5s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+                        }
+                        .teks-finish {
+                          text-align: center;
+                          color: #ec6923;
+                          font-weight: 800;
+                          font-size: 1.3rem;
+                          margin-top: 5px;
+                          text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                        }
+                        </style>
+                        <div class="track-lari">
+                          <div class="pelari">🏃‍♂️💨</div>
+                        </div>
+                        <div class="teks-finish">🏆 FINISH STRONG! Dokumen Selesai Dijahit!</div>
+                        """
+                        st.markdown(animasi_lari, unsafe_allow_html=True)
                         st.download_button("⬇️ Unduh File Final: " + nama_file_unduh, data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
             else:
                 st.warning("⚠️ Mohon lengkapi minimal satu rangkaian aset untuk dijahit.")
