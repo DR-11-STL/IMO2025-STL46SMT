@@ -58,28 +58,39 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. BEDAH PRESISI KECIL: Menutup tepat di titik kotak pink "STL-SMT"
+    # 1. KODE ASSASSIN: Membedakan Foto Asli dengan "Stamp" Palsu Foxit
     for halaman in doc:
-        # Bersihkan anotasi standar jika ada
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                if anotasi.type[1] != "Stamp" or anotasi.rect.height < 50:
+                tipe_anotasi = anotasi.type[1]
+                
+                # Menggali teks rahasia di dalam metadata anotasi (dijadikan huruf besar semua)
+                info = anotasi.info
+                teks_tersembunyi = (str(info.get("content", "")) + str(info.get("title", "")) + str(info.get("subject", ""))).upper()
+                
+                # EKSEKUSI PEMBASMIAN:
+                # 1. Hapus jika BUKAN Stamp.
+                # 2. Jika dia "Stamp", periksa isinya! Kalau ada kata "STL" atau "SMT", langsung basmi!
+                # Foto aslimu akan aman karena metadata foto tidak mengandung teks tersebut.
+                if tipe_anotasi != "Stamp" or "STL" in teks_tersembunyi or "SMT" in teks_tersembunyi:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
-                    break
+                    break # Hentikan putaran sejenak, lalu ulangi agar bersih total
+            
             if not ada_yang_dihapus:
                 break
                 
-        # Tutup HANYA area kecil pojok kanan atas tempat kotak pink nongkrong (Lebar pas, tidak merusak isi lain)
-        # Koordinat: x0=430, y0=245, x1=580, y1=290 (area spesifik kotak pink)
-        kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
-        halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
-        halaman.apply_redactions()
+        # Bersihkan widget dan tautan tersembunyi
+        try:
+            for widget in halaman.widgets():
+                halaman.delete_widget(widget)
+        except Exception: pass
         
+        # Mengepel bersih memori halaman
         halaman.clean_contents()
                 
-    # 2. Menjahit lampiran foto progres
+    # 2. Menjahit lampiran foto progres (hanya jika ada data foto)
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar = 150
@@ -131,10 +142,13 @@ def proses_dokumen(pdf_file, data_rangkaian):
             items_per_page += 1
         
     output_pdf = io.BytesIO()
-    doc.save(output_pdf, garbage=2, deflate=True)
+    
+    # --- PERINTAH SAPU BERSIH MEMORI (GARBAGE COLLECTION) ---
+    doc.save(output_pdf, garbage=4, deflate=True)
     doc.close()
     
     return output_pdf.getvalue()
+
 # --- Antarmuka Web Utama ---
 st.title("IMO2025 📑 dR ")
 
@@ -233,8 +247,8 @@ if mode_kerja in ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Ano
 # ==========================================
 # LOGIKA MENU 3 (GENERATOR WATERMARK FOTO)
 # ==========================================
-elif mode_kerja == "📸 Generator Foto Watermark Laporan":
-    st.subheader("📸 Generator Foto Watermark Laporan")
+elif mode_kerja == "📸 Generator Foto Watermark ":
+    st.subheader("📸 Generator Foto Watermark ")
     
     uploaded_image = st.file_uploader("Pilih foto lapangan yang masih polos...", type=['jpg', 'jpeg', 'png'])
 
@@ -243,7 +257,7 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
         
         col1, col2 = st.columns(2)
         with col1:
-            waktu = st.text_input("Waktu (Timemark)", "Rabu, 05 Maret 2025 11:22")
+            waktu = st.text_input("Waktu (Timemark)", "Rabu, 05 Maret 2025 11:22 WIB")
             koordinat = st.text_input("Koordinat", "-6.957726, 110.432890")
         with col2:
             kegiatan = st.text_input("Kegiatan", "Perawatan Penggerak Wesel Elektrik W45B SMT")
@@ -317,9 +331,9 @@ elif mode_kerja == "📸 Generator Foto Watermark Laporan":
             byte_im = buf_img.getvalue()
             
             st.download_button(
-                label="⬇️ Unduh Foto Laporan",
+                label="⬇️ Unduh Foto ",
                 data=byte_im,
-                file_name="Laporan_Watermark_Sintel.jpg",
+                file_name="Foto_Watermark_Sintel.jpg",
                 mime="image/jpeg",
                 use_container_width=True
             )
