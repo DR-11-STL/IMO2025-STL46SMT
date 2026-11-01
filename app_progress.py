@@ -150,7 +150,7 @@ with col_kanan:
 st.write("Pilih jenis pekerjaan yang ingin dilakukan hari ini:")
 mode_kerja = st.radio(
     "Mode Aplikasi",
-    ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres", "📸 Generator Foto Watermark Laporan"],
+    ["🧹 Hanya Bersihkan Kotak Pink Anotasi", "🚀 Bersihkan Anotasi & Jahit Foto Progres", "📸 Generator Foto Kegiatan Watermark"],
     label_visibility="collapsed",
     horizontal=True
 )
@@ -239,7 +239,7 @@ if "Bersihkan" in mode_kerja:
 elif "Watermark" in mode_kerja:
     st.subheader("📸 Generator Foto Watermark")
     
-    uploaded_image = st.file_uploader("Pilih foto lapangan yang masih polos...", type=['jpg', 'jpeg', 'png'])
+    uploaded_image = st.file_uploader("Pilih foto kegiatan yang masih polos...", type=['jpg', 'jpeg', 'png'])
 
     if uploaded_image is not None:
         st.info("✍️ Silakan isi data manual di bawah ini untuk dijahit ke foto:")
