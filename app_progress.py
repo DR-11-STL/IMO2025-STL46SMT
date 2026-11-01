@@ -134,36 +134,19 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
     for halaman in doc:
-        teks_halaman = halaman.get_text().upper()
-        
-        # PENGAMAN GANDA (DOUBLE SHIELD)
-        # 1. Cek kata kunci khas tabel
-        kata_tabel = ["REFER", "DIKETAHUI", "PERALATAN", "KETERANGAN", "ANGKA", "NILAI", "HURUF", "VAC", "VDC"]
-        is_checklist = any(kata in teks_halaman for kata in kata_tabel)
-        
-        # 2. Cek kepadatan teks. Jika lebih dari 200 huruf, PASTI ini tabel, BUKAN foto!
-        if len(teks_halaman.strip()) > 200:
-            is_checklist = True
-        
+        # BERSIHKAN ANOTASI CERDAS TANPA KOTAK PUTIH
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                info = anotasi.info
-                isi_teks = (str(info.get("content", "")) + str(info.get("subject", ""))).upper()
-                
-                if anotasi.type[1] != "Stamp" or "STL" in isi_teks or "SMT" in isi_teks:
+                # Hapus anotasi jika BUKAN Stamp, ATAU jika Stamp tapi tingginya pendek (< 150)
+                # Kotak pink tingginya kecil, pasti terhapus. Foto besar akan aman.
+                if anotasi.type[1] != "Stamp" or anotasi.rect.height < 150:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
                     break
             if not ada_yang_dihapus:
                 break
                 
-        # Penimpaan area pojok kanan atas HANYA akan tereksekusi di halaman foto (yang lolos sensor ganda)
-        if not is_checklist:
-            kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
-            halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
-            halaman.apply_redactions()
-        
         halaman.clean_contents()
                 
     if len(data_rangkaian) > 0:
@@ -288,7 +271,7 @@ if "Bersihkan" in mode_kerja:
                         hasil_pdf_bytes = proses_dokumen(pdf_file, [])
                         nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                         
-                        st.success("✨ Selesai! Kotak pink berhasil dihapus dan tabel laporan aman utuh.")
+                        st.success("✨ Selesai! Kotak pink berhasil dihapus dan foto aman utuh.")
                         st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
                     else:
                         zip_buffer = io.BytesIO()
@@ -298,7 +281,7 @@ if "Bersihkan" in mode_kerja:
                                 nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                                 zip_file.writestr(nama_file_unduh, hasil_pdf_bytes)
                         
-                        st.success(f"✨ Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi tanpa merusak tabel.")
+                        st.success(f"✨ Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi.")
                         st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
                         
         elif "Jahit" in mode_kerja:
