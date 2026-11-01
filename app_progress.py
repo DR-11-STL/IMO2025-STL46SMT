@@ -11,7 +11,7 @@ USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025"
 
 # --- SISTEM LOGIN ---
-st.set_page_config(page_title="Generator Lampiran Progres", page_icon="📑", layout="wide")
+st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
 
 # --- TRIK MENYEMBUNYIKAN MENU & IKON GITHUB ---
 sembunyikan_elemen = """
@@ -237,7 +237,7 @@ if "Bersihkan" in mode_kerja:
 # LOGIKA MENU 3 (GENERATOR WATERMARK FOTO)
 # ==========================================
 elif "Watermark" in mode_kerja:
-    st.subheader("📸 Generator Foto Watermark Laporan")
+    st.subheader("📸 Generator Foto Watermark")
     
     uploaded_image = st.file_uploader("Pilih foto lapangan yang masih polos...", type=['jpg', 'jpeg', 'png'])
 
@@ -317,9 +317,9 @@ elif "Watermark" in mode_kerja:
             byte_im = buf_img.getvalue()
             
             st.download_button(
-                label="⬇️ Unduh Foto Laporan",
+                label="⬇️ Unduh Foto",
                 data=byte_im,
-                file_name="Laporan_Watermark_Sintel.jpg",
+                file_name="Foto_Watermark_Sintel.jpg",
                 mime="image/jpeg",
                 use_container_width=True
             )
