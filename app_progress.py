@@ -13,21 +13,109 @@ PASS_VALID = "IMO2025"
 # --- SISTEM LOGIN ---
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
 
-# --- TRIK MENYEMBUNYIKAN MENU & IKON GITHUB ---
-sembunyikan_elemen = """
+# --- CUSTOM CSS: TEMA DARK MODE KAI MODERN ---
+tema_visual = """
 <style>
+/* Sembunyikan elemen bawaan Streamlit/GitHub */
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 footer {visibility: hidden;}
+
+/* Latar Belakang Hitam Elegan (Dark Mode) */
+.stApp {
+    background-color: #121212;
+}
+
+/* Memaksa teks bawaan menjadi terang/putih agar terbaca di latar gelap */
+html, body, [class*="css"], .stMarkdown p, label {
+    color: #E2E8F0 !important;
+}
+
+/* Kustomisasi Judul Utama dengan Gradasi Oranye ke Biru */
+.title-kai {
+    text-align: center;
+    background: -webkit-linear-gradient(45deg, #ec6923, #6a65c2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-size: 3.5rem;
+    font-weight: 900;
+    margin-bottom: 0px;
+    padding-bottom: 0px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+}
+.subtitle-kai {
+    text-align: center;
+    color: #94A3B8 !important;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 30px;
+    letter-spacing: 1px;
+}
+
+/* Kustomisasi Tombol Utama: Warna Dasar Biru Gelap KAI */
+.stButton>button {
+    background-color: #282562 !important; 
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+    border-radius: 8px !important;
+    border: 1px solid #282562 !important;
+    padding: 0.6rem 1.2rem !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+    transition: all 0.3s ease !important;
+}
+
+/* Efek saat tombol disentuh (Hover) berubah ke Oranye KAI */
+.stButton>button:hover {
+    background-color: #ec6923 !important; 
+    border: 1px solid #ec6923 !important;
+    transform: translateY(-3px);
+    box-shadow: 0 10px 15px -3px rgba(236, 105, 35, 0.4) !important;
+}
+
+/* Kustomisasi Kotak Input */
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {
+    border-radius: 8px !important;
+    border: 1.5px solid #282562 !important;
+    background-color: #1E1E1E !important;
+    color: #FFFFFF !important;
+}
+.stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {
+    border-color: #ec6923 !important;
+    box-shadow: 0 0 0 1px #ec6923 !important;
+}
+
+/* Modifikasi Kotak Notifikasi / Info */
+div[data-testid="stInfo"] {
+    background-color: rgba(40, 37, 98, 0.25) !important; 
+    border-left: 5px solid #282562 !important;
+    color: #E2E8F0 !important;
+}
+div[data-testid="stSuccess"] {
+    background-color: rgba(236, 105, 35, 0.15) !important; 
+    border-left: 5px solid #ec6923 !important;
+    color: #E2E8F0 !important;
+}
+div[data-testid="stWarning"] {
+    background-color: rgba(236, 105, 35, 0.25) !important;
+    border-left: 5px solid #ec6923 !important;
+    color: #E2E8F0 !important;
+}
+
+/* Penyesuaian Garis Pembatas */
+hr {
+    border-top: 1px solid #2D2D2D !important;
+}
 </style>
 """
-st.markdown(sembunyikan_elemen, unsafe_allow_html=True)
+st.markdown(tema_visual, unsafe_allow_html=True)
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 
 if not st.session_state.login_sukses:
-    st.title("IMO2025 📑 dR")
+    st.markdown("<h1 class='title-kai'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle-kai'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
+    
     st.write("Silakan masukkan Username dan Password untuk masuk ke ruang kerja.")
     
     username = st.text_input("Username")
@@ -49,8 +137,6 @@ if not st.session_state.login_sukses:
 def crop_center_square(image):
     width, height = image.size
     max_dim = max(width, height)
-    
-    # Memaksa (resize) gambar menjadi persegi 1:1 secara utuh
     new_image = image.resize((max_dim, max_dim))
     return new_image
 
@@ -60,17 +146,15 @@ def proses_dokumen(pdf_file, data_rangkaian):
     for halaman in doc:
         # 1. RADAR PENDETEKSI: Bedakan Halaman Checklist vs Halaman Lampiran Foto
         teks_halaman = halaman.get_text().upper()
-        # Jika ada kata-kata khas form KAI ini, berarti ini halaman tabel. JANGAN ditimpa!
         is_checklist = "REFER" in teks_halaman or "DIKETAHUI" in teks_halaman or "PERALATAN" in teks_halaman
         
-        # 2. BERSIHKAN ANOTASI STANDAR (Berlaku untuk semua halaman)
+        # 2. BERSIHKAN ANOTASI STANDAR 
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
                 info = anotasi.info
                 isi_teks = (str(info.get("content", "")) + str(info.get("subject", ""))).upper()
                 
-                # Hapus anotasi normal. Jika dia menyamar jadi Stamp/Foto, cek apakah ada kata STL/SMT
                 if anotasi.type[1] != "Stamp" or "STL" in isi_teks or "SMT" in isi_teks:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
@@ -78,16 +162,15 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
                 
-        # 3. REDAKSI FISIK / PENIMPAAN (HANYA JALAN DI HALAMAN LAMPIRAN FOTO)
+        # 3. REDAKSI FISIK (HANYA JALAN DI HALAMAN LAMPIRAN FOTO)
         if not is_checklist:
-            # Koordinat ini hanya akan dieksekusi di halaman foto agar checklist tidak krowak
             kotak_tutup_presisi = fitz.Rect(430, 245, 580, 290) 
             halaman.add_redact_annot(kotak_tutup_presisi, fill=(1, 1, 1))
             halaman.apply_redactions()
         
         halaman.clean_contents()
                 
-    # 2. Menjahit lampiran foto progres
+    # 4. Menjahit lampiran foto progres
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar = 150
@@ -145,13 +228,17 @@ def proses_dokumen(pdf_file, data_rangkaian):
     return output_pdf.getvalue()
 
 # --- Antarmuka Web Utama ---
-st.title("IMO2025 📑 dR ")
-
 col_kiri, col_kanan = st.columns([4, 1])
+with col_kiri:
+    st.markdown("<h1 class='title-kai'>IMO2025 📑 dR</h1>", unsafe_allow_html=True)
+    st.markdown("<p class='subtitle-kai' style='text-align: left;'>Ruang Kerja Sintel Daop 4 Semarang</p>", unsafe_allow_html=True)
 with col_kanan:
+    st.write("")
     if st.button("🚪 Keluar", use_container_width=True):
         st.session_state.login_sukses = False
         st.rerun()
+
+st.divider()
 
 # --- PILIHAN MODE KERJA ---
 st.write("Pilih jenis pekerjaan yang ingin dilakukan hari ini:")
@@ -181,13 +268,13 @@ if "Bersihkan" in mode_kerja:
             col1, col2, col3 = st.columns(3)
             with col1:
                 img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
-                if img_0: st.image(img_0, use_container_width=True) 
+                if img_0: st.image(img_0, use_container_width=True, caption="0%") 
             with col2:
                 img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
-                if img_50: st.image(img_50, use_container_width=True) 
+                if img_50: st.image(img_50, use_container_width=True, caption="50%") 
             with col3:
                 img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
-                if img_100: st.image(img_100, use_container_width=True) 
+                if img_100: st.image(img_100, use_container_width=True, caption="100%") 
             
             if nama_aset and img_0 and img_50 and img_100:
                 data_siap_proses.append({
@@ -208,7 +295,7 @@ if "Bersihkan" in mode_kerja:
                         hasil_pdf_bytes = proses_dokumen(pdf_file, [])
                         nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                         
-                        st.success("Selesai! Kotak pink berhasil dihapus dan tabel laporan aman utuh.")
+                        st.success("✨ Selesai! Kotak pink berhasil dihapus dan tabel laporan aman utuh.")
                         st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
                     else:
                         zip_buffer = io.BytesIO()
@@ -218,7 +305,7 @@ if "Bersihkan" in mode_kerja:
                                 nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                                 zip_file.writestr(nama_file_unduh, hasil_pdf_bytes)
                         
-                        st.success(f"Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi tanpa merusak tabel.")
+                        st.success(f"✨ Selesai! {len(pdf_inputs)} file berhasil dibersihkan dari anotasi tanpa merusak tabel.")
                         st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Sintel_Bersih.zip", mime="application/zip", use_container_width=True)
                         
         elif "Jahit" in mode_kerja:
@@ -226,7 +313,7 @@ if "Bersihkan" in mode_kerja:
                 st.info("ℹ️ Perhatian: Pada mode jahit foto, sistem hanya akan memproses file PDF yang letaknya paling pertama.")
                 
             if len(data_siap_proses) > 0:
-                st.success(f"Ada {len(data_siap_proses)} rangkaian foto yang siap dijahit.")
+                st.success(f"✅ Ada {len(data_siap_proses)} rangkaian foto yang siap dijahit.")
                 if st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
                     with st.spinner("Sedang membersihkan PDF dan menjahit lampiran foto..."):
                         pdf_file = pdf_inputs[0] 
@@ -235,7 +322,7 @@ if "Bersihkan" in mode_kerja:
                         nama_file_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                         
                         st.balloons() 
-                        st.download_button("⬇️ Unduh File: " + nama_file_unduh, data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
+                        st.download_button("⬇️ Unduh File Final: " + nama_file_unduh, data=hasil_pdf_bytes, file_name=nama_file_unduh, mime="application/pdf", use_container_width=True)
             else:
                 st.warning("⚠️ Mohon lengkapi minimal satu rangkaian aset untuk dijahit.")
 
