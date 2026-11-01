@@ -58,13 +58,12 @@ def crop_center_square(image):
 def proses_dokumen(pdf_file, data_rangkaian):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     
-    # 1. PEMBASMIAN TOTAL: Filter Anotasi & Redaksi Fisik
+    # 1. BEDAH KOORDINAT ABSOLUT: Menutup paksa area pojok kanan atas halaman
     for halaman in doc:
-        # A. Basmi anotasi bandel yang masih tersisa
+        # Bersihkan anotasi standar terlebih dahulu
         while True:
             ada_yang_dihapus = False
             for anotasi in halaman.annots():
-                # Hapus anotasi. Jika menyamar jadi Stamp/Foto, hapus yang ukurannya pipih (< 50)
                 if anotasi.type[1] != "Stamp" or anotasi.rect.height < 50:
                     halaman.delete_annot(anotasi)
                     ada_yang_dihapus = True
@@ -72,15 +71,12 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
                 
-        # B. REDAKSI FISIK: Menghancurkan kotak pink yang sudah menyatu (flatten) dengan halaman
-        pencarian = halaman.search_for("STL-SMT")
-        for area in pencarian:
-            # Perlebar kotak putih ke kanan (+180) untuk menutupi seluruh ekor tanggal dan jam
-            # Perlebar sedikit ke atas dan bawah (-5, +5) untuk menutupi garis border pink
-            kotak_redaksi = fitz.Rect(area.x0 - 5, area.y0 - 5, area.x1 + 180, area.y1 + 5)
-            halaman.add_redact_annot(kotak_redaksi, fill=(1, 1, 1)) 
-            
-        halaman.apply_redactions() # Eksekusi penimpaan putih murni permanen
+        # Tutup area pojok kanan atas dengan kotak putih bersih (Redaksi Paksa)
+        # Koordinat (x0, y0, x1, y1) mencakup area tempat kotak pink "STL-SMT" biasa nongkrong
+        kotak_tutup = fitz.Rect(380, 0, 595, 100) 
+        halaman.add_redact_annot(kotak_tutup, fill=(1, 1, 1))
+        halaman.apply_redactions()
+        
         halaman.clean_contents()
                 
     # 2. Menjahit lampiran foto progres
@@ -139,7 +135,6 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc.close()
     
     return output_pdf.getvalue()
-
 # --- Antarmuka Web Utama ---
 st.title("IMO2025 📑 dR ")
 
