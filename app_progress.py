@@ -245,13 +245,13 @@ if "Bersihkan" in mode_kerja:
             col1, col2, col3 = st.columns(3)
             with col1:
                 img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
-                if img_0: st.image(img_0, use_container_width=True, caption="0%") 
+                if img_0: st.image(img_0, use_container_width=True, caption="FOTO 0%") 
             with col2:
                 img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
-                if img_50: st.image(img_50, use_container_width=True, caption="50%") 
+                if img_50: st.image(img_50, use_container_width=True, caption="FOTO 50%") 
             with col3:
                 img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
-                if img_100: st.image(img_100, use_container_width=True, caption="100%") 
+                if img_100: st.image(img_100, use_container_width=True, caption="FOTO 100%") 
             
             if nama_aset and img_0 and img_50 and img_100:
                 data_siap_proses.append({
