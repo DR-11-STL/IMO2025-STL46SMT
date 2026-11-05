@@ -8,7 +8,7 @@ import textwrap
 
 # --- KONFIGURASI USERNAME & PASSWORD ---
 USER_VALID = "Sintel46"
-PASS_VALID = "IMO2025"
+PASS_VALID = "IMO2025."
 
 # --- SISTEM LOGIN ---
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
