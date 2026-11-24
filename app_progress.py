@@ -172,9 +172,9 @@ def proses_dokumen(pdf_file, data_rangkaian):
             
             y_gambar = y_pos + 15
             koleksi = [
-                {"file": data["img_0"], "label": "0%"},
-                {"file": data["img_50"], "label": "50%"},
-                {"file": data["img_100"], "label": "100%"}
+                {"file": data["img_0"], "label": "Foto 0%"},
+                {"file": data["img_50"], "label": "Foto 50%"},
+                {"file": data["img_100"], "label": "Foto 100%"}
             ]
             
             for i, item in enumerate(koleksi):
@@ -244,13 +244,13 @@ if "Bersihkan" in mode_kerja:
             
             col1, col2, col3 = st.columns(3)
             with col1:
-                img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
-                if img_0: st.image(img_0, use_container_width=True, caption="FOTO 0%") 
+                img_0 = st.file_uploader("Foto ", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
+                if img_0: st.image(img_0, use_container_width=True, caption="FOTO ") 
             with col2:
-                img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
-                if img_50: st.image(img_50, use_container_width=True, caption="FOTO 50%") 
+                img_50 = st.file_uploader("Foto 5", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
+                if img_50: st.image(img_50, use_container_width=True, caption="FOTO 5") 
             with col3:
-                img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
+                img_100 = st.file_uploader("Foto 10", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
                 if img_100: st.image(img_100, use_container_width=True, caption="FOTO 100%") 
             
             if nama_aset and img_0 and img_50 and img_100:
