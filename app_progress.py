@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps
 import io
@@ -36,11 +37,14 @@ css_tema = f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
 #MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton, .stToolbarActions,
 [data-testid="stStatusWidget"], div[class*="viewerBadge"], div[class*="profileContainer"],
-div[class*="StatusWidget"], a[href*="streamlit.io/cloud"] {{
+div[class*="profilePreview"], div[class*="StatusWidget"], div[class*="manageApp"],
+button[kind="manageApp"], a[href*="streamlit.io/cloud"], a[href*="share.streamlit.io"] {{
     display: none !important;
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }}
 header[data-testid="stHeader"] {{
     background: transparent !important;
@@ -116,6 +120,28 @@ section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; bo
 hr {{border-top: 1px solid {BORDER_CARD} !important;}}
 </style>"""
 st.markdown(css_tema, unsafe_allow_html=True)
+
+# Pembersih otomatis overlay "< Manage app" di pojok kanan bawah Streamlit Cloud
+components.html("""
+<script>
+const hideManageApp = () => {
+    try {
+        const doc = window.parent.document;
+        doc.querySelectorAll('div, button, a, span').forEach(el => {
+            if (el.textContent && el.textContent.trim() === 'Manage app') {
+                let target = el.closest('div[class*="profile"], div[class*="viewer"], div[class*="Status"]') || el.parentElement;
+                if (target) {
+                    target.style.setProperty('display', 'none', 'important');
+                    target.style.setProperty('visibility', 'hidden', 'important');
+                }
+            }
+        });
+    } catch (e) {}
+};
+hideManageApp();
+setInterval(hideManageApp, 800);
+</script>
+""", height=0, width=0)
 
 def crop_center_square(image):
     img = ImageOps.exif_transpose(image).convert("RGB")
