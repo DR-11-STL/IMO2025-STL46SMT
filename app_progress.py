@@ -426,6 +426,109 @@ if not st.session_state.login_sukses:
                 st.error("❌ Username atau Password salah!")
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
+    st.markdown("""<div class='peloton-box'><svg viewBox="0 0 360 88" width="100%" height="78" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(236,105,35,0)"/><stop offset="50%" stop-color="#ec6923"/><stop offset="100%" stop-color="#FFFFFF"/></linearGradient></defs><line class="speed-flow" x1="15" y1="26" x2="145" y2="26" stroke="#ec6923" stroke-width="2" stroke-linecap="round"/><line class="speed-flow" x1="35" y1="44" x2="175" y2="44" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="76" x2="348" y2="76" stroke="url(#tg)" stroke-width="2.6" stroke-linecap="round"/><g class="r-bob3" transform="translate(88,10)" opacity="0.5"><circle cx="24" cy="9" r="5" fill="#CBD5E1"/><path d="M22 16 L17 34" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M17 34 L8 54" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M17 34 L27 52" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M22 19 L11 30" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/><path class="limb-b" d="M22 19 L33 28" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/></g><g class="r-bob2" transform="translate(152,8)" opacity="0.78"><circle cx="24" cy="9" r="5.3" fill="#E2E8F0"/><path d="M22 16 L17 35" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-a" d="M17 35 L7 56" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M17 35 L28 54" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M22 19 L10 31" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/><path class="limb-a" d="M22 19 L34 29" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/></g><g class="r-bob1" transform="translate(218,6)"><circle cx="25" cy="9" r="5.8" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.6"/><path d="M23 16 L17 36" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-b" d="M17 36 L6 58" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M17 36 L30 55" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M23 19 L10 32" stroke="#ec6923" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M23 19 L36 29" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></g></svg></div><div><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+    with col_right:
+        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
+        st.markdown("### Masuk Ruang Kerja 👋")
+        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Masuk Ruang Kerja", use_container_width=True):
+            if username == USER_VALID and password == PASS_VALID:
+                st.session_state.login_sukses = True
+                st.rerun()
+            else:
+                st.error("❌ Username atau Password salah!")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
+        <div class='login-brand-panel framer-panel'>
+            <h1>IMO2025 📑 dR</h1>
+            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>
+            
+            <div class='peloton-stage'>
+                <svg viewBox="0 0 360 92" width="100%" height="84" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <!-- Gradasi Mewah untuk Jejak Jalur Larinya -->
+                        <linearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="rgba(236,105,35,0)" />
+                            <stop offset="45%" stop-color="#ec6923" />
+                            <stop offset="90%" stop-color="#3B378C" />
+                            <stop offset="100%" stop-color="rgba(255,255,255,0.4)" />
+                        </linearGradient>
+                        <filter id="glowOrange" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur stdDeviation="2.5" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                        <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur stdDeviation="1.8" result="blur" />
+                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                        </filter>
+                    </defs>
+
+                    <!-- Garis Aliran Udara Terusan (Wind Speed) -->
+                    <line class="wind-line-1" x1="-10" y1="12" x2="370" y2="12" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
+                    <line class="wind-line-2" x1="-10" y1="28" x2="370" y2="28" stroke="rgba(236,105,35,0.12)" stroke-width="1.5" />
+                    <line class="wind-line-3" x1="-10" y1="46" x2="370" y2="46" stroke="rgba(59,55,140,0.18)" stroke-width="1.2" />
+
+                    <!-- Partikel Debu Kecepatan Berseliweran -->
+                    <circle class="particle-1" cx="0" cy="18" r="1.5" fill="#ec6923" />
+                    <circle class="particle-2" cx="0" cy="36" r="2" fill="#FFFFFF" />
+                    <circle class="particle-3" cx="0" cy="50" r="1.2" fill="#3B378C" />
+
+                    <!-- Lintasan Neon Bawah -->
+                    <line class="track-slow" x1="10" y1="78" x2="350" y2="78" stroke="url(#trackGrad)" stroke-width="2.5" stroke-linecap="round" />
+                    <line class="track-fast" x1="20" y1="81" x2="340" y2="81" stroke="#FFFFFF" opacity="0.6" stroke-width="1" stroke-linecap="round" />
+
+                    <!-- Pelari 3 (Belakang - Siluet Biru Lembut) -->
+                    <g class="run-body-3" transform="translate(68, 11)" opacity="0.48" filter="url(#glowBlue)">
+                        <circle cx="26" cy="10" r="5.2" fill="#94A3B8" />
+                        <path class="run-limbs-3" d="M24 18 L16 35 L2 46 M16 35 L27 46 L18 59 M23 21 L35 28 L41 21 M21 21 L10 27 L2 33" stroke="#94A3B8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </g>
+
+                    <!-- Pelari 2 (Tengah - Siluet Transparan Ringan) -->
+                    <g class="run-body-2" transform="translate(138, 8)" opacity="0.75">
+                        <circle cx="27" cy="10" r="5.6" fill="#CBD5E1" />
+                        <path class="run-limbs-2" d="M25 18 L17 36 L3 48 M17 36 L28 47 L21 61 M24 21 L36 28 L43 21 M22 21 L11 27 L3 34" stroke="#E2E8F0" stroke-width="4.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                    </g>
+
+                    <!-- Pelari 1 (Paling Depan - Putih Mengkilap Dengan Glow Oranye) -->
+                    <g class="run-body-1" transform="translate(208, 5)" filter="url(#glowOrange)">
+                        <!-- Kepala -->
+                        <circle cx="29" cy="10" r="6" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.8" />
+                        <!-- Badan, Tangan, dan Kaki (Bisa Mengayun Lewat Keyframes d:) -->
+                        <path class="run-limbs-1" d="M26 18 L18 37 L4 52 M18 37 L31 49 L26 64 M25 21 L38 28 L46 20 M23 21 L11 28 L3 36" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                        <!-- Detail Pinggul/Punggung Ekstra Kontras -->
+                        <path d="M25 21 L36 27" stroke="#ec6923" stroke-width="2.2" stroke-linecap="round" />
+                    </g>
+                </svg>
+            </div>
+
+            <div>
+                <span class='feature-pill'>📅 Auto-Tanggal PDF</span>
+                <span class='feature-pill'>🧹 Hapus Kotak Pink</span>
+                <span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span>
+                <span class='feature-pill'>📸 Watermark</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_right:
+        st.write("")
+        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
+        st.markdown("### Masuk Ruang Kerja 👋")
+        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
+        st.write("")
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        st.write("")
+        if st.button("Masuk Ruang Kerja", use_container_width=True):
+            if username == USER_VALID and password == PASS_VALID:
+                st.session_state.login_sukses = True
+                st.rerun()
+            else:
+                st.error("❌ Username atau Password salah!")
+        st.markdown("</div>", unsafe_allow_html=True)
+    st.stop()
 
 with st.sidebar:
     st.markdown("<p class='title-kai'>IMO2025 📑 dR</p>", unsafe_allow_html=True)
