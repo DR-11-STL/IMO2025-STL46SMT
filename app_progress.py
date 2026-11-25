@@ -117,23 +117,96 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     return output_pdf.getvalue()
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.015, rasio_y0=0.725, rasio_x1=0.63, rasio_y1=0.775):
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_y0=0.722, rasio_x1=0.845, rasio_y1=0.985):
+    from PIL import ImageFilter
+    import re
+
     img = img_pil.convert("RGBA")
     w, h = img.size
-    x0, y0, x1, y1 = int(w * rasio_x0), int(h * rasio_y0), int(w * rasio_x1), int(h * rasio_y1)
-    warna_bg = img.getpixel((min(w - 2, x1 + 4), max(1, y0 + 2)))
-    warna_bg = (55, 55, 55, 215) if sum(warna_bg[:3]) > 350 else (warna_bg[0], warna_bg[1], warna_bg[2], 235)
+
+    bx0, by0 = 0, int(h * 0.722)
+    bx1, by1 = int(w * 0.845), int(h * 0.985)
+    box_w, box_h = bx1 - bx0, by1 - by0
+
+    # Nilai default jika OCR gagal membaca sebagian baris
+    jam_asli = "09:00"
+    koordinat_asli = "-6.9721328,110.416271"
+    baris_alamat = [
+        "Kecamatan Semarang Utara, Kota Semarang",
+        "Jawa Tengah",
+        "Indonesia"
+    ]
+
+    try:
+        import pytesseract
+        crop_ocr = img.crop((bx0, by0, bx1, by1)).convert("L")
+        crop_ocr = crop_ocr.resize((crop_ocr.width * 2, crop_ocr.height * 2), Image.Resampling.LANCZOS)
+        teks_ocr = pytesseract.image_to_string(crop_ocr, config="--psm 6")
+
+        # 1. Ambil jam asli (HH:MM)
+        cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
+        if cari_jam:
+            jam_asli = cari_jam[0]
+
+        # 2. Ambil koordinat asli
+        cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
+        if cari_koord:
+            koordinat_asli = cari_koord[0].replace(" ", "")
+
+        # 3. Ambil baris-baris alamat asli setelah baris koordinat (Genuk, Pedurungan, dll.)
+        semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
+        idx_koord = -1
+        for i, b in enumerate(semua_baris):
+            if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
+                idx_koord = i
+                break
+
+        if idx_koord != -1 and len(semua_baris) > idx_koord + 1:
+            kandidat_alamat = semua_baris[idx_koord + 1 : idx_koord + 4]
+            if len(kandidat_alamat) >= 1:
+                baris_alamat = kandidat_alamat
+    except Exception:
+        pass
+
+    strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
+    strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
+
+    tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5)
+    tambalan_alami = tambalan_alami.filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
+
+    mask = Image.new("L", (box_w, box_h), 255)
+    draw_mask = ImageDraw.Draw(mask)
+    pad = max(4, int(box_h * 0.05))
+    draw_mask.rectangle([pad, pad, box_w - pad, box_h - pad], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
+    img.paste(tambalan_alami, (bx0, by0), mask)
+
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle([x0, y0, x1, y1], fill=warna_bg)
-    ukuran_font = max(10, int(max(10, y1 - y0) * 0.85))
+    draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 132))
+
+    ukuran_font = max(11, int(w * 0.0365))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
-    draw.text((x0 + 2, y0), teks_hari_tanggal_baru, font=font, fill=(245, 245, 245, 255))
-    return Image.alpha_composite(img, overlay).convert("RGB")
 
+    # Gabungkan baris tanggal baru + jam asli + koordinat asli + alamat asli foto tersebut
+    baris_teks = [
+        f"{teks_hari_tanggal_baru} {jam_asli}",
+        koordinat_asli
+    ] + baris_alamat
+
+    margin_kiri = int(w * 0.016)
+    y_teks = by0 + int(box_h * 0.045)
+    spasi_baris = int(ukuran_font * 1.30)
+
+    for baris in baris_teks:
+        draw.text((margin_kiri + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 150))
+        draw.text((margin_kiri, y_teks), baris, font=font, fill=(242, 242, 242, 252))
+        y_teks += spasi_baris
+
+    return Image.alpha_composite(img, overlay).convert("RGB")
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
     for blok in data_teks.get("blocks", []):
