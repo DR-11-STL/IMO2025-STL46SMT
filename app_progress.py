@@ -118,83 +118,76 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc.close()
     return output_pdf.getvalue()
 
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.012, rasio_y0=0.720, rasio_x1=0.78, rasio_y1=0.778):
-    """
-    Membersihkan baris tanggal lama secara natural menggunakan kloning tekstur latar
-    dengan tepi halus (feathered mask), menggeser blok jam asli agar rapat dengan
-    tanggal baru, dan mencetak tanggal baru dengan gaya font identik Timemark.
-    """
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_y0=0.722, rasio_x1=0.845, rasio_y1=0.985):
     from PIL import ImageFilter
+    import re
 
     img = img_pil.convert("RGBA")
     w, h = img.size
 
-    x0 = int(w * rasio_x0)
-    y0 = int(h * rasio_y0)
-    x1 = int(w * rasio_x1)
-    y1 = int(h * rasio_y1)
-    tinggi_baris = max(12, y1 - y0)
+    bx0, by0 = 0, int(h * 0.722)
+    bx1, by1 = int(w * 0.845), int(h * 0.985)
+    box_w, box_h = bx1 - bx0, by1 - by0
 
-    # 1. Potong & simpan blok piksel JAM ASLI di ujung kanan baris tanggal (misal "09:04")
-    # Pada teks "Minggu, 20 September 2026 09:04", jam berada sekitar rasio X 0.56 s/d 0.72
-    jam_x0 = int(w * 0.555)
-    jam_x1 = int(w * 0.725)
-    potongan_jam = img.crop((jam_x0, y0, jam_x1, y1))
+    jam_asli = "09:00"
+    koordinat_asli = "-6.9721328,110.416271"
+    try:
+        import pytesseract
+        crop_ocr = img.crop((bx0, by0, bx1, by1)).convert("L")
+        crop_ocr = crop_ocr.resize((crop_ocr.width * 2, crop_ocr.height * 2), Image.Resampling.LANCZOS)
+        teks_ocr = pytesseract.image_to_string(crop_ocr, config="--psm 6")
 
-    # 2. Ambil tekstur bersih tepat di atas kotak watermark (area rel/ballast)
-    # lalu gelapkan agar menyatu dengan kotak bayangan Timemark
-    sumber_y0 = max(0, int(h * 0.64))
-    sumber_y1 = sumber_y0 + tinggi_baris
-    tambalan = img.crop((x0, sumber_y0, x1, sumber_y1)).convert("RGBA")
-    # Gelapkan tambalan agar menyerupai bayangan transparan Timemark (sekitar 48% kecerahan)
-    gelap = Image.new("RGBA", tambalan.size, (18, 18, 18, 135))
-    tambalan = Image.alpha_composite(tambalan, gelap)
+        cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
+        if cari_jam:
+            jam_asli = cari_jam[0]
 
-    # Buat masker tepi halus (Gaussian Blur) agar tidak ada garis potong kotak
-    mask = Image.new("L", tambalan.size, 0)
+        cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
+        if cari_koord:
+            koordinat_asli = cari_koord[0].replace(" ", "")
+    except Exception:
+        pass
+
+    strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
+    strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
+
+    tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5)
+    tambalan_alami = tambalan_alami.filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
+
+    mask = Image.new("L", (box_w, box_h), 255)
     draw_mask = ImageDraw.Draw(mask)
-    pad = max(2, int(tinggi_baris * 0.15))
-    draw_mask.rectangle([pad, pad, tambalan.width - pad, tambalan.height - pad], fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=max(2, int(tinggi_baris * 0.18))))
+    pad = max(4, int(box_h * 0.05))
+    draw_mask.rectangle([pad, pad, box_w - pad, box_h - pad], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
+    img.paste(tambalan_alami, (bx0, by0), mask)
 
-    # Tempelkan tambalan tekstur halus menutupi seluruh baris tanggal & jam lama
-    img.paste(tambalan, (x0, y0), mask)
+    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 132))
 
-    # 3. Tulis tanggal baru (misal "Jumat, 03 Januari 2025") dengan font bersih & bayangan tipis
-    ukuran_font = max(11, int(tinggi_baris * 0.84))
+    ukuran_font = max(11, int(w * 0.0365))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
 
-    overlay_teks = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw_teks = ImageDraw.Draw(overlay_teks)
-    pos_x_teks = x0 + int(w * 0.008)
-    pos_y_teks = y0 + int(tinggi_baris * 0.04)
+    baris_teks = [
+        f"{teks_hari_tanggal_baru} {jam_asli}",
+        koordinat_asli,
+        "Kecamatan Semarang Utara, Kota Semarang",
+        "Jawa Tengah",
+        "Indonesia"
+    ]
 
-    # Bayangan lembut 1px khas render teks kamera HP agar tidak terlihat "mengambang"
-    draw_teks.text((pos_x_teks + 1, pos_y_teks + 1), teks_hari_tanggal_baru, font=font, fill=(0, 0, 0, 140))
-    draw_teks.text((pos_x_teks, pos_y_teks), teks_hari_tanggal_baru, font=font, fill=(238, 238, 238, 250))
+    margin_kiri = int(w * 0.016)
+    y_teks = by0 + int(box_h * 0.045)
+    spasi_baris = int(ukuran_font * 1.30)
 
-    # Hitung lebar teks tanggal baru untuk menempatkan potongan JAM ASLI tepat di sebelahnya
-    try:
-        bbox = draw_teks.textbbox((pos_x_teks, pos_y_teks), teks_hari_tanggal_baru, font=font)
-        akhir_x_tanggal = bbox[2]
-    except Exception:
-        akhir_x_tanggal = pos_x_teks + int(len(teks_hari_tanggal_baru) * ukuran_font * 0.53)
+    for baris in baris_teks:
+        draw.text((margin_kiri + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 150))
+        draw.text((margin_kiri, y_teks), baris, font=font, fill=(242, 242, 242, 252))
+        y_teks += spasi_baris
 
-    img = Image.alpha_composite(img, overlay_teks)
-
-    # 4. Tempel kembali potongan JAM ASLI rapat di sebelah kanan tanggal baru dengan tepi halus
-    mask_jam = Image.new("L", potongan_jam.size, 0)
-    draw_mj = ImageDraw.Draw(mask_jam)
-    draw_mj.rectangle([2, 1, potongan_jam.width - 2, potongan_jam.height - 1], fill=255)
-    mask_jam = mask_jam.filter(ImageFilter.GaussianBlur(radius=1.5))
-
-    posisi_jam_baru = akhir_x_tanggal + int(ukuran_font * 0.25)
-    img.paste(potongan_jam, (posisi_jam_baru, y0), mask_jam)
-
-    return img.convert("RGB")
+    return Image.alpha_composite(img, overlay).convert("RGB")
 
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
