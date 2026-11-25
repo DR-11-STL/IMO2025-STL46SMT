@@ -223,7 +223,9 @@ def deteksi_gaya_teks(halaman, teks_target):
 def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_watermark_baru="Jumat, 03 Januari 2025"):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     total_teks, total_gbr, xref_done = 0, 0, set()
-    for halaman in doc:
+
+    for idx_hal, halaman in enumerate(doc):
+        # 1. Ganti seluruh teks tanggal di semua halaman (termasuk halaman 1)
         for teks_lama, teks_baru in daftar_ganti:
             if not teks_lama.strip():
                 continue
@@ -236,21 +238,35 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
                 y_tulis = origin_asli[1] if (origin_asli and abs(origin_asli[1] - rect.y1) < 5) else (rect.y1 - 1.5)
                 halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname=font_pakai, color=(0, 0, 0))
                 total_teks += 1
-        if edit_gambar:
+
+        # 2. Edit watermark hanya pada foto dokumentasi (lewati halaman 1 / lembar header logo KAI)
+        if edit_gambar and idx_hal > 0:
             for img_info in halaman.get_images(full=True):
                 xref = img_info[0]
                 if xref in xref_done:
                     continue
                 xref_done.add(xref)
                 base_image = doc.extract_image(xref)
-                if base_image["width"] < 180 or base_image["height"] < 180:
+                w_img, h_img = base_image["width"], base_image["height"]
+                if w_img < 180 or h_img < 180:
                     continue
-                img_hasil = patch_watermark_gambar(Image.open(io.BytesIO(base_image["image"])), teks_watermark_baru)
+
+                pil_cek = Image.open(io.BytesIO(base_image["image"])).convert("RGB")
+
+                # Filter anti-logo: cek sudut kiri atas & kanan atas gambar; jika putih polos (>245), lewati
+                p_kiri_atas = pil_cek.getpixel((5, 5))
+                p_kanan_atas = pil_cek.getpixel((w_img - 6, 5))
+                if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
+                    continue
+
+                img_hasil = patch_watermark_gambar(pil_cek, teks_watermark_baru)
                 buf = io.BytesIO()
                 img_hasil.save(buf, format="JPEG", quality=88)
                 halaman.replace_image(xref, stream=buf.getvalue())
                 total_gbr += 1
+
         halaman.clean_contents()
+
     output_pdf = io.BytesIO()
     doc.save(output_pdf, garbage=3, deflate=True)
     doc.close()
