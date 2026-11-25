@@ -1,6 +1,6 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
 import io
 import zipfile
 import urllib.request
@@ -154,7 +154,6 @@ def baca_metadata_foto_asli(img_rgba):
 
     try:
         import pytesseract
-        from PIL import ImageEnhance
 
         crop_dasar = img_rgba.crop((bx0, by0, bx1, by1)).convert("L")
         crop_besar = crop_dasar.resize((crop_dasar.width * 3, crop_dasar.height * 3), Image.Resampling.LANCZOS)
@@ -168,19 +167,16 @@ def baca_metadata_foto_asli(img_rgba):
         for gbr_uji in kandidat_gambar:
             teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
 
-            # 1. Baca jam asli dari baris ke-1 (HH:MM)
             if not jam_hasil:
                 cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
                 if cari_jam:
                     jam_hasil = cari_jam[0]
 
-            # 2. Baca koordinat asli dari baris ke-2
             if not koord_hasil:
                 cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
                 if cari_koord:
                     koord_hasil = cari_koord[0].replace(" ", "")
 
-            # 3. Baca baris 3-5 (Kecamatan/Kota, Provinsi, Negara) asli dari foto ini
             if not alamat_hasil:
                 semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
                 idx_mulai = -1
@@ -217,19 +213,16 @@ def baca_metadata_foto_asli(img_rgba):
 
     return jam_hasil, koord_hasil, alamat_hasil
 
-
 def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     img = img_pil.convert("RGBA")
     w, h = img.size
 
-    # Dimensi kotak Timemark persis seperti tampilan acuan yang kamu suka
     bx0, by0 = 0, int(h * 0.720)
     bx1, by1 = int(w * 0.885), int(h * 0.985)
     box_w, box_h = bx1 - bx0, by1 - by0
 
     jam_asli, koordinat_asli, baris_alamat = baca_metadata_foto_asli(img)
 
-    # Jika sebagian baris tertutup pantulan cahaya, salin dari foto aset sebelumnya agar tidak pernah salah kecamatan
     if fallback_meta:
         if not jam_asli and fallback_meta.get("jam"):
             jam_asli = fallback_meta["jam"]
@@ -248,7 +241,6 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
 
     meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
 
-    # Bersihkan tulisan lama secara halus dengan tekstur sekitar
     strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
     strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
     tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5).filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
@@ -259,7 +251,6 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
     img.paste(tambalan_alami, (bx0, by0), mask)
 
-    # Kotak shading gelap transparan yang rapi dan seragam
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     draw.rectangle([bx0, by0, bx1, by1], fill=(8, 8, 8, 162))
@@ -270,7 +261,6 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     except Exception:
         font = ImageFont.load_default()
 
-    # Baris 1: Hari & Tanggal baru + Jam asli foto | Baris 2-5: Koordinat & Lokasi asli foto ditulis ulang rapi
     baris_teks = [
         f"{teks_hari_tanggal_baru} {jam_asli}",
         koordinat_asli
@@ -287,6 +277,7 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
         y_teks += spasi_baris
 
     return Image.alpha_composite(img, overlay).convert("RGB"), meta_terbaca
+
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
     for blok in data_teks.get("blocks", []):
@@ -303,6 +294,7 @@ def deteksi_gaya_teks(halaman, teks_target):
 def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_watermark_baru="Sabtu, 11 Januari 2025"):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_teks, total_gbr, xref_done = 0, 0, set()
+    meta_terakhir = None
 
     for idx_hal, halaman in enumerate(doc):
         for teks_lama, teks_baru in daftar_ganti:
@@ -335,7 +327,7 @@ def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_wat
                 if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
                     continue
 
-                img_hasil = patch_watermark_gambar(pil_cek, teks_watermark_baru)
+                img_hasil, meta_terakhir = patch_watermark_gambar(pil_cek, teks_watermark_baru, meta_terakhir)
                 buf = io.BytesIO()
                 img_hasil.save(buf, format="JPEG", quality=88)
                 halaman.replace_image(xref, stream=buf.getvalue())
