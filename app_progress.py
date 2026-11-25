@@ -1,18 +1,19 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont, ImageFilter
+from PIL import Image, ImageDraw, ImageFont
 import io
 import zipfile
 import urllib.request
 import textwrap
-import re
-import datetime
 
+# --- KONFIGURASI USERNAME & PASSWORD ---
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
+# --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
 
+# --- STATE MANAGEMENT ---
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 if "dark_mode" not in st.session_state:
@@ -24,8 +25,11 @@ if "riwayat_proses" not in st.session_state:
         {"waktu": "Hari ini", "modul": "Sistem Siap", "detail": "Menunggu dokumen checklist"}
     ]
 
+# --- PALET WARNA PRESISI RGB(40, 37, 98) & RGB(236, 105, 35) ---
 NAVY_RGB = "rgb(40, 37, 98)"
+NAVY_HEX = "#282562"
 ORANGE_RGB = "rgb(236, 105, 35)"
+ORANGE_HEX = "#ec6923"
 
 if st.session_state.dark_mode:
     BG_APP, BG_SIDEBAR, BG_CARD, BORDER_CARD = "#0B0E17", "#101422", "#14192B", "rgba(40, 37, 98, 0.55)"
@@ -42,8 +46,8 @@ html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !impor
 section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD};}}
 .stMarkdown p, label, span {{color: {TEXT_PRIMARY} !important;}}
 .title-kai {{font-size: 2.3rem; font-weight: 900; margin: 0; color: {NAVY_RGB}; -webkit-text-stroke: 1.2px #FFFFFF; text-shadow: 2px 2px 6px rgba(0,0,0,0.7);}}
-.login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 36px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
-.login-brand-panel h1 {{font-size: 3.1rem; font-weight: 900; color: {NAVY_RGB}; -webkit-text-stroke: 1.5px #FFFFFF; margin-bottom: 10px;}}
+.login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 40px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
+.login-brand-panel h1 {{font-size: 3.2rem; font-weight: 900; color: {NAVY_RGB}; -webkit-text-stroke: 1.5px #FFFFFF; margin-bottom: 10px;}}
 .login-brand-panel p {{color: #E2E8F0 !important; font-size: 0.95rem;}}
 .feature-pill {{display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; color: #FFFFFF !important; margin: 8px 6px 0 0;}}
 .bento-card {{background-color: {BG_CARD}; border: 1px solid {BORDER_CARD}; border-radius: 16px; padding: 20px; margin-bottom: 16px;}}
@@ -80,14 +84,14 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
         halaman.clean_contents()
-
+                
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar, tinggi_gambar, spasi = 150, 150, 30
-        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2
+        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2 
         y_pos, items_per_page = 60, 0
         halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
-
+        
         for data in data_rangkaian:
             if items_per_page >= 3:
                 halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
@@ -106,95 +110,28 @@ def proses_dokumen(pdf_file, data_rangkaian):
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
                 halaman_baru.insert_text(fitz.Point(x0 + 60, y0 + tinggi_gambar + 20), item["label"], fontsize=14, color=(0, 0, 0))
-            y_pos += 210
+            y_pos += 210  
             items_per_page += 1
-
+        
     output_pdf = io.BytesIO()
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     return output_pdf.getvalue()
-
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_y0=0.722, rasio_x1=0.845, rasio_y1=0.985):
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.015, rasio_y0=0.725, rasio_x1=0.63, rasio_y1=0.775):
     img = img_pil.convert("RGBA")
     w, h = img.size
-
-    bx0, by0 = 0, int(h * 0.722)
-    bx1, by1 = int(w * 0.845), int(h * 0.985)
-    box_w, box_h = bx1 - bx0, by1 - by0
-
-    jam_asli = "09:00"
-    koordinat_asli = "-6.9721328,110.416271"
-    baris_alamat = [
-        "Kecamatan Semarang Utara, Kota Semarang",
-        "Jawa Tengah",
-        "Indonesia"
-    ]
-
-    try:
-        import pytesseract
-        crop_ocr = img.crop((bx0, by0, bx1, by1)).convert("L")
-        crop_ocr = crop_ocr.resize((crop_ocr.width * 2, crop_ocr.height * 2), Image.Resampling.LANCZOS)
-        teks_ocr = pytesseract.image_to_string(crop_ocr, config="--psm 6")
-
-        cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
-        if cari_jam:
-            jam_asli = cari_jam[0]
-
-        cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
-        if cari_koord:
-            koordinat_asli = cari_koord[0].replace(" ", "")
-
-        semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
-        idx_koord = -1
-        for i, b in enumerate(semua_baris):
-            if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
-                idx_koord = i
-                break
-
-        if idx_koord != -1 and len(semua_baris) > idx_koord + 1:
-            kandidat_alamat = semua_baris[idx_koord + 1 : idx_koord + 4]
-            if len(kandidat_alamat) >= 1:
-                baris_alamat = kandidat_alamat
-    except Exception:
-        pass
-
-    strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
-    strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
-
-    tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5)
-    tambalan_alami = tambalan_alami.filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
-
-    mask = Image.new("L", (box_w, box_h), 255)
-    draw_mask = ImageDraw.Draw(mask)
-    pad = max(4, int(box_h * 0.05))
-    draw_mask.rectangle([pad, pad, box_w - pad, box_h - pad], fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
-    img.paste(tambalan_alami, (bx0, by0), mask)
-
+    x0, y0, x1, y1 = int(w * rasio_x0), int(h * rasio_y0), int(w * rasio_x1), int(h * rasio_y1)
+    warna_bg = img.getpixel((min(w - 2, x1 + 4), max(1, y0 + 2)))
+    warna_bg = (55, 55, 55, 215) if sum(warna_bg[:3]) > 350 else (warna_bg[0], warna_bg[1], warna_bg[2], 235)
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 132))
-
-    ukuran_font = max(11, int(w * 0.0365))
+    draw.rectangle([x0, y0, x1, y1], fill=warna_bg)
+    ukuran_font = max(10, int(max(10, y1 - y0) * 0.85))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
-
-    baris_teks = [
-        f"{teks_hari_tanggal_baru} {jam_asli}",
-        koordinat_asli
-    ] + baris_alamat
-
-    margin_kiri = int(w * 0.016)
-    y_teks = by0 + int(box_h * 0.045)
-    spasi_baris = int(ukuran_font * 1.30)
-
-    for baris in baris_teks:
-        draw.text((margin_kiri + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 150))
-        draw.text((margin_kiri, y_teks), baris, font=font, fill=(242, 242, 242, 252))
-        y_teks += spasi_baris
-
+    draw.text((x0 + 2, y0), teks_hari_tanggal_baru, font=font, fill=(245, 245, 245, 255))
     return Image.alpha_composite(img, overlay).convert("RGB")
 
 def deteksi_gaya_teks(halaman, teks_target):
@@ -247,121 +184,15 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
     return output_pdf.getvalue(), total_teks, total_gbr
 
 if not st.session_state.login_sukses:
-    import base64
-    import os
-
     st.write("")
-    st.write("")
-    _, col_left, col_right, _ = st.columns([0.45, 2.35, 2.05, 0.45], gap="large")
-
+    _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<style>
-@keyframes framerSpring {
-    0% { opacity: 0; transform: translateY(24px) scale(0.98); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes pelotonRun {
-    0% { transform: translateX(-14px) translateY(0px) scale(1.04); }
-    25% { transform: translateX(0px) translateY(-5px) scale(1.06); }
-    50% { transform: translateX(14px) translateY(0px) scale(1.04); }
-    75% { transform: translateX(0px) translateY(-4px) scale(1.06); }
-    100% { transform: translateX(-14px) translateY(0px) scale(1.04); }
-}
-@keyframes streakSlide {
-    0% { transform: translateX(130%); opacity: 0; }
-    20% { opacity: 0.92; }
-    80% { opacity: 0.92; }
-    100% { transform: translateX(-130%); opacity: 0; }
-}
-@keyframes auraPulse {
-    0%, 100% { box-shadow: 0 0 18px rgba(236, 105, 35, 0.32), inset 0 0 18px rgba(40, 37, 98, 0.55); }
-    50% { box-shadow: 0 0 34px rgba(236, 105, 35, 0.62), inset 0 0 26px rgba(40, 37, 98, 0.75); }
-}
-.framer-panel {
-    animation: framerSpring 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-.motion-frame {
-    position: relative;
-    margin: 18px 0 16px 0;
-    border-radius: 16px;
-    overflow: hidden;
-    border: 1px solid rgba(236, 105, 35, 0.48);
-    background: linear-gradient(135deg, rgb(40, 37, 98) 0%, #0B0E17 100%);
-    animation: auraPulse 2.4s ease-in-out infinite;
-    height: 168px;
-}
-.runner-img-wrap {
-    position: absolute;
-    inset: -10px -20px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: pelotonRun 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-}
-.runner-img-wrap img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: contrast(1.08) saturate(1.18);
-}
-.streak-bar {
-    position: absolute;
-    left: 0;
-    height: 2.5px;
-    border-radius: 999px;
-    pointer-events: none;
-    z-index: 3;
-}
-.s1 { top: 22%; width: 48%; background: linear-gradient(90deg, transparent, rgb(236, 105, 35), #ffffff); animation: streakSlide 1.15s linear infinite; }
-.s2 { top: 52%; width: 62%; background: linear-gradient(90deg, transparent, #ffffff, rgb(236, 105, 35)); animation: streakSlide 1.55s linear 0.35s infinite; }
-.s3 { top: 80%; width: 40%; background: linear-gradient(90deg, transparent, #60a5fa, rgb(236, 105, 35)); animation: streakSlide 0.95s linear 0.65s infinite; }
-.vignette-edge {
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(90deg, rgba(11, 14, 23, 0.48) 0%, transparent 18%, transparent 82%, rgba(11, 14, 23, 0.52) 100%);
-    pointer-events: none;
-    z-index: 2;
-}
-</style>
-<div class='login-brand-panel framer-panel'>
-    <h1>IMO2025 📑 dR</h1>
-    <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>""", unsafe_allow_html=True)
-
-        file_peloton = (
-            "runner_peloton.jpeg" if os.path.exists("runner_peloton.jpeg")
-            else ("runner_peloton.jpg" if os.path.exists("runner_peloton.jpg") else None)
-        )
-        if file_peloton:
-            with open(file_peloton, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            img_html = f"<img src='data:image/jpeg;base64,{b64}' alt='Peloton Runner'/>"
-        else:
-            img_html = "<div style='color:#fff;font-weight:700;letter-spacing:1px;'>runner_peloton.jpeg</div>"
-
-        st.markdown(f"""<div class='motion-frame'>
-    <div class='runner-img-wrap'>{img_html}</div>
-    <div class='vignette-edge'></div>
-    <div class='streak-bar s1'></div>
-    <div class='streak-bar s2'></div>
-    <div class='streak-bar s3'></div>
-</div>
-<div>
-    <span class='feature-pill'>📅 Auto-Tanggal PDF</span>
-    <span class='feature-pill'>🧹 Hapus Kotak Pink</span>
-    <span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span>
-    <span class='feature-pill'>📸 Watermark</span>
-</div>
-</div>""", unsafe_allow_html=True)
-
+        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
-        st.write("")
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
         st.markdown("### Masuk Ruang Kerja 👋")
-        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
-        st.write("")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        st.write("")
         if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
@@ -370,12 +201,16 @@ if not st.session_state.login_sukses:
                 st.error("❌ Username atau Password salah!")
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
+
 with st.sidebar:
     st.markdown("<p class='title-kai'>IMO2025 📑 dR</p>", unsafe_allow_html=True)
     st.caption("Automation Workspace Suite")
     st.divider()
     st.session_state.menu_aktif = st.radio("Mode Aplikasi", [
-        
+        "📅 Auto-Ubah Tanggal PDF & Foto",
+        "🧹 Hanya Bersihkan Kotak Pink Anotasi",
+        "🚀 Bersihkan Anotasi & Jahit Foto Progres",
+        "📸 Generator Foto Kegiatan Watermark"
     ], label_visibility="collapsed")
     st.divider()
     mode_gelap = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
@@ -404,53 +239,26 @@ main_area, right_panel = st.columns([2.7, 1.05], gap="medium")
 with main_area:
     if st.session_state.menu_aktif == "📅 Auto-Ubah Tanggal PDF & Foto":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (100% Sinkron Otomatis)")
-        st.caption("Tanggal dan nama hari di dalam foto dokumentasi otomatis mengikuti tanggal baru yang kamu masukkan di bawah.")
+        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (100% Otomatis)")
+        st.caption("Ukuran font, gaya Bold/Reguler, posisi teks, dan tanggal pada foto dokumentasi disesuaikan otomatis dengan dokumen asli.")
         pdf_tanggal = st.file_uploader("📥 Unggah File PDF Laporan Perawatan", type=["pdf"])
         c1, c2 = st.columns(2)
         with c1:
             lama_1 = st.text_input("Jenis 1 (Format ISO)", value="2026-09-20")
-            lama_2 = st.text_input("Jenis 2 (Format Header & Foto)", value="20 September 2026")
+            lama_2 = st.text_input("Jenis 2 (Format Header)", value="20 September 2026")
             lama_3 = st.text_input("Jenis 3 (Opsional)", value="")
         with c2:
-            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-02-12")
-            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="12 Februari 2025")
+            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-01-03")
+            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="03 Januari 2025")
             baru_3 = st.text_input("Ubah Jenis 3 Menjadi (Opsional)", value="")
-
-        def buat_hari_tanggal_indo(teks_tgl, teks_iso=""):
-            hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
-            bulan_map = {
-                "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
-                "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12
-            }
-            try:
-                bagian = teks_tgl.strip().split()
-                if len(bagian) == 3 and bagian[1].lower() in bulan_map:
-                    dt = datetime.date(int(bagian[2]), bulan_map[bagian[1].lower()], int(bagian[0]))
-                    return f"{hari_indo[dt.weekday()]}, {teks_tgl.strip()}"
-            except Exception:
-                pass
-            try:
-                if len(teks_iso.strip().split("-")) == 3:
-                    y, m, d = map(int, teks_iso.strip().split("-"))
-                    dt = datetime.date(y, m, d)
-                    return f"{hari_indo[dt.weekday()]}, {teks_tgl.strip()}"
-            except Exception:
-                pass
-            return teks_tgl.strip()
-
-        otomatis_wm = buat_hari_tanggal_indo(baru_2, baru_1)
-        edit_foto_pdf = st.checkbox(f"✅ Otomatis ubah tanggal di dalam seluruh foto menjadi: **{otomatis_wm}**", value=True)
-
+        edit_foto_pdf = st.checkbox("✅ Otomatis ganti tanggal di dalam seluruh foto dokumentasi PDF", value=True)
+        teks_wm_baru = st.text_input("Hari & Tanggal Baru di Dalam Foto", value="Jumat, 03 Januari 2025")
         if pdf_tanggal and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
-            with st.spinner("Mendeteksi jenis font asli & menyinkronkan seluruh halaman serta foto..."):
-                hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(
-                    pdf_tanggal, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)],
-                    edit_foto_pdf, otomatis_wm
-                )
+            with st.spinner("Mendeteksi jenis font asli & memperbarui seluruh halaman serta foto..."):
+                hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(pdf_tanggal, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)], edit_foto_pdf, teks_wm_baru)
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Auto-Tanggal", "detail": f"{pdf_tanggal.name[:22]}... ({jml_teks} teks, {jml_gbr} foto)"})
-                st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
-                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', baru_1)}", "application/pdf", use_container_width=True)
+                st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui.")
+                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', '03-01-2025')}", "application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
     elif "Bersihkan" in st.session_state.menu_aktif:
