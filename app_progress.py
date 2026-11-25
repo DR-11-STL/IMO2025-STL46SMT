@@ -11,7 +11,7 @@ import datetime
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
-st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide", initial_sidebar_state="collapsed")
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
@@ -34,15 +34,66 @@ else:
 
 css_tema = f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
-#MainMenu, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], .stAppDeployButton {{
+#MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton, .stToolbarActions,
+[data-testid="stStatusWidget"], div[class*="viewerBadge"], div[class*="profileContainer"],
+div[class*="StatusWidget"], a[href*="streamlit.io/cloud"] {{
     display: none !important;
     visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }}
-header[data-testid="stHeader"] {{background: transparent !important;}}
-[data-testid="collapsedControl"] {{visibility: visible !important; display: flex !important;}}
+header[data-testid="stHeader"] {{
+    background: transparent !important;
+    visibility: visible !important;
+    display: flex !important;
+    pointer-events: none !important;
+}}
+[data-testid="stToolbar"] {{
+    visibility: visible !important;
+    display: flex !important;
+    background: transparent !important;
+}}
+/* Tombol Panah / Garis Sidebar Standby Permanen di Pojok Kiri Atas */
+[data-testid="stExpandSidebarButton"], [data-testid="collapsedControl"] {{
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    z-index: 999999 !important;
+    visibility: visible !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: linear-gradient(135deg, {NAVY_RGB}, {ORANGE_RGB}) !important;
+    color: #FFFFFF !important;
+    border: 1.5px solid rgba(255,255,255,0.4) !important;
+    border-radius: 11px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}}
+[data-testid="stExpandSidebarButton"]:hover, [data-testid="collapsedControl"]:hover {{
+    transform: scale(1.06) !important;
+    box-shadow: 0 6px 18px rgba(236, 105, 35, 0.65) !important;
+}}
+[data-testid="stExpandSidebarButton"] svg, [data-testid="collapsedControl"] svg {{
+    fill: #FFFFFF !important;
+    color: #FFFFFF !important;
+    width: 22px !important;
+    height: 22px !important;
+}}
+.block-container {{
+    padding-top: 2.8rem !important;
+    padding-left: 2.2rem !important;
+    padding-right: 2.2rem !important;
+    max-width: 100% !important;
+}}
 html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !important;}}
 .stApp {{background-color: {BG_APP}; color: {TEXT_PRIMARY};}}
-section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD};}}
+section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD}; z-index: 1000000 !important;}}
 .stMarkdown p, label, span {{color: {TEXT_PRIMARY} !important;}}
 .title-kai {{font-size: 2.3rem; font-weight: 900; margin: 0; color: {NAVY_RGB}; -webkit-text-stroke: 1.2px #FFFFFF; text-shadow: 2px 2px 6px rgba(0,0,0,0.7);}}
 .login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 40px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
@@ -314,7 +365,7 @@ if not st.session_state.login_sukses:
     st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p></p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
         st.markdown("### Masuk Ruang Kerja 👋")
