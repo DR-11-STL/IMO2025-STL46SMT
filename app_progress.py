@@ -247,32 +247,122 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
     return output_pdf.getvalue(), total_teks, total_gbr
 
 if not st.session_state.login_sukses:
+    import base64
+    import os
+
+    st.write("")
     st.write("")
     _, col_left, col_right, _ = st.columns([0.45, 2.35, 2.05, 0.45], gap="large")
+
     with col_left:
         st.markdown("""<style>
-@keyframes framerSpringIn {0%{opacity:0;transform:translateY(24px) scale(0.98);}100%{opacity:1;transform:translateY(0) scale(1);}}
-@keyframes trackGlide {0%{stroke-dashoffset:200;}100%{stroke-dashoffset:-200;}}
-@keyframes pelotonBob {0%,100%{transform:translateY(0px) rotate(0deg);}50%{transform:translateY(-5px) rotate(2deg);}}
-@keyframes swingFwd {0%,100%{transform:rotate(-26deg);}50%{transform:rotate(28deg);}}
-@keyframes swingBwd {0%,100%{transform:rotate(28deg);}50%{transform:rotate(-26deg);}}
-.framer-card{animation:framerSpringIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards;}
-.peloton-stage{margin:16px 0 12px 0;padding:12px 14px 6px 14px;background:rgba(11,14,23,0.42);border:1px solid rgba(255,255,255,0.16);border-radius:16px;overflow:hidden;}
-.r-lead{animation:pelotonBob 0.5s cubic-bezier(0.45,0,0.55,1) infinite;}
-.r-mid{animation:pelotonBob 0.56s cubic-bezier(0.45,0,0.55,1) 0.14s infinite;}
-.r-back{animation:pelotonBob 0.62s cubic-bezier(0.45,0,0.55,1) 0.28s infinite;}
-.arm-a,.leg-a{animation:swingFwd 0.5s ease-in-out infinite;transform-box:fill-box;transform-origin:top center;}
-.arm-b,.leg-b{animation:swingBwd 0.5s ease-in-out infinite;transform-box:fill-box;transform-origin:top center;}
-.wind-streak{stroke-dasharray:65,55;animation:trackGlide 0.72s linear infinite;}
-.neon-lane{stroke-dasharray:110,70;animation:trackGlide 1.3s linear infinite;}
-</style><div class='login-brand-panel framer-card'><h1>IMO2025 📑 dR</h1><p></p><div class='peloton-stage'><svg viewBox="0 0 360 88" width="100%" height="78" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="laneGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(236,105,35,0)"/><stop offset="50%" stop-color="#ec6923"/><stop offset="100%" stop-color="#FFFFFF"/></linearGradient></defs><line class="wind-streak" x1="12" y1="24" x2="155" y2="24" stroke="#ec6923" stroke-width="2" stroke-linecap="round"/><line class="wind-streak" x1="32" y1="42" x2="185" y2="42" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/><line class="neon-lane" x1="10" y1="76" x2="350" y2="76" stroke="url(#laneGrad)" stroke-width="2.6" stroke-linecap="round"/><g class="r-back" transform="translate(86,10)" opacity="0.5"><circle cx="24" cy="9" r="5" fill="#CBD5E1"/><path d="M22 16 L17 34" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="leg-b" d="M17 34 L8 54" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="leg-a" d="M17 34 L27 52" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="arm-a" d="M22 19 L11 30" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/><path class="arm-b" d="M22 19 L33 28" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/></g><g class="r-mid" transform="translate(152,8)" opacity="0.78"><circle cx="24" cy="9" r="5.3" fill="#E2E8F0"/><path d="M22 16 L17 35" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="leg-a" d="M17 35 L7 56" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="leg-b" d="M17 35 L28 54" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="arm-b" d="M22 19 L10 31" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/><path class="arm-a" d="M22 19 L34 29" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/></g><g class="r-lead" transform="translate(218,6)"><circle cx="25" cy="9" r="5.8" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.6"/><path d="M23 16 L17 36" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="leg-b" d="M17 36 L6 58" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="leg-a" d="M17 36 L30 55" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="arm-a" d="M23 19 L10 32" stroke="#ec6923" stroke-width="4" stroke-linecap="round"/><path class="arm-b" d="M23 19 L36 29" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></g></svg></div><div><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+@keyframes framerSpring {
+    0% { opacity: 0; transform: translateY(24px) scale(0.98); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes pelotonRun {
+    0% { transform: translateX(-14px) translateY(0px) scale(1.04); }
+    25% { transform: translateX(0px) translateY(-5px) scale(1.06); }
+    50% { transform: translateX(14px) translateY(0px) scale(1.04); }
+    75% { transform: translateX(0px) translateY(-4px) scale(1.06); }
+    100% { transform: translateX(-14px) translateY(0px) scale(1.04); }
+}
+@keyframes streakSlide {
+    0% { transform: translateX(130%); opacity: 0; }
+    20% { opacity: 0.92; }
+    80% { opacity: 0.92; }
+    100% { transform: translateX(-130%); opacity: 0; }
+}
+@keyframes auraPulse {
+    0%, 100% { box-shadow: 0 0 18px rgba(236, 105, 35, 0.32), inset 0 0 18px rgba(40, 37, 98, 0.55); }
+    50% { box-shadow: 0 0 34px rgba(236, 105, 35, 0.62), inset 0 0 26px rgba(40, 37, 98, 0.75); }
+}
+.framer-panel {
+    animation: framerSpring 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.motion-frame {
+    position: relative;
+    margin: 18px 0 16px 0;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(236, 105, 35, 0.48);
+    background: linear-gradient(135deg, rgb(40, 37, 98) 0%, #0B0E17 100%);
+    animation: auraPulse 2.4s ease-in-out infinite;
+    height: 168px;
+}
+.runner-img-wrap {
+    position: absolute;
+    inset: -10px -20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: pelotonRun 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+}
+.runner-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: contrast(1.08) saturate(1.18);
+}
+.streak-bar {
+    position: absolute;
+    left: 0;
+    height: 2.5px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 3;
+}
+.s1 { top: 22%; width: 48%; background: linear-gradient(90deg, transparent, rgb(236, 105, 35), #ffffff); animation: streakSlide 1.15s linear infinite; }
+.s2 { top: 52%; width: 62%; background: linear-gradient(90deg, transparent, #ffffff, rgb(236, 105, 35)); animation: streakSlide 1.55s linear 0.35s infinite; }
+.s3 { top: 80%; width: 40%; background: linear-gradient(90deg, transparent, #60a5fa, rgb(236, 105, 35)); animation: streakSlide 0.95s linear 0.65s infinite; }
+.vignette-edge {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, rgba(11, 14, 23, 0.48) 0%, transparent 18%, transparent 82%, rgba(11, 14, 23, 0.52) 100%);
+    pointer-events: none;
+    z-index: 2;
+}
+</style>
+<div class='login-brand-panel framer-panel'>
+    <h1>IMO2025 📑 dR</h1>
+    <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>""", unsafe_allow_html=True)
+
+        file_peloton = (
+            "runner_peloton.jpeg" if os.path.exists("runner_peloton.jpeg")
+            else ("runner_peloton.jpg" if os.path.exists("runner_peloton.jpg") else None)
+        )
+        if file_peloton:
+            with open(file_peloton, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            img_html = f"<img src='data:image/jpeg;base64,{b64}' alt='Peloton Runner'/>"
+        else:
+            img_html = "<div style='color:#fff;font-weight:700;letter-spacing:1px;'>runner_peloton.jpeg</div>"
+
+        st.markdown(f"""<div class='motion-frame'>
+    <div class='runner-img-wrap'>{img_html}</div>
+    <div class='vignette-edge'></div>
+    <div class='streak-bar s1'></div>
+    <div class='streak-bar s2'></div>
+    <div class='streak-bar s3'></div>
+</div>
+<div>
+    <span class='feature-pill'>📅 Auto-Tanggal PDF</span>
+    <span class='feature-pill'>🧹 Hapus Kotak Pink</span>
+    <span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span>
+    <span class='feature-pill'>📸 Watermark</span>
+</div>
+</div>""", unsafe_allow_html=True)
+
     with col_right:
+        st.write("")
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### MASUK RUANG KERJA 👋")
+        st.markdown("### Masuk Ruang Kerja 👋")
         st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
+        st.write("")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        if st.button("MASUK RUANG KERJA", use_container_width=True):
+        st.write("")
+        if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
                 st.rerun()
@@ -280,7 +370,6 @@ if not st.session_state.login_sukses:
                 st.error("❌ Username atau Password salah!")
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
-
 with st.sidebar:
     st.markdown("<p class='title-kai'>IMO2025 📑 dR</p>", unsafe_allow_html=True)
     st.caption("Automation Workspace Suite")
