@@ -1,19 +1,18 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
 import zipfile
 import urllib.request
 import textwrap
+import re
+import datetime
 
-# --- KONFIGURASI USERNAME & PASSWORD ---
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
-# --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
 
-# --- STATE MANAGEMENT ---
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 if "dark_mode" not in st.session_state:
@@ -25,11 +24,8 @@ if "riwayat_proses" not in st.session_state:
         {"waktu": "Hari ini", "modul": "Sistem Siap", "detail": "Menunggu dokumen checklist"}
     ]
 
-# --- PALET WARNA PRESISI RGB(40, 37, 98) & RGB(236, 105, 35) ---
 NAVY_RGB = "rgb(40, 37, 98)"
-NAVY_HEX = "#282562"
 ORANGE_RGB = "rgb(236, 105, 35)"
-ORANGE_HEX = "#ec6923"
 
 if st.session_state.dark_mode:
     BG_APP, BG_SIDEBAR, BG_CARD, BORDER_CARD = "#0B0E17", "#101422", "#14192B", "rgba(40, 37, 98, 0.55)"
@@ -84,14 +80,14 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
         halaman.clean_contents()
-                
+
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar, tinggi_gambar, spasi = 150, 150, 30
-        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2 
+        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2
         y_pos, items_per_page = 60, 0
         halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
-        
+
         for data in data_rangkaian:
             if items_per_page >= 3:
                 halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
@@ -110,25 +106,41 @@ def proses_dokumen(pdf_file, data_rangkaian):
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
                 halaman_baru.insert_text(fitz.Point(x0 + 60, y0 + tinggi_gambar + 20), item["label"], fontsize=14, color=(0, 0, 0))
-            y_pos += 210  
+            y_pos += 210
             items_per_page += 1
-        
+
     output_pdf = io.BytesIO()
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     return output_pdf.getvalue()
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_y0=0.722, rasio_x1=0.845, rasio_y1=0.985):
-    from PIL import ImageFilter
-    import re
 
+def deteksi_tanggal_otomatis_pdf(pdf_bytes):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    gabungan_teks = "\n".join(hal.get_text("text") for hal in doc)
+    doc.close()
+
+    tgl_iso_ditemukan = ""
+    tgl_indo_ditemukan = ""
+
+    cari_iso = re.findall(r"\b(20\d{2}-\d{2}-\d{2})\b", gabungan_teks)
+    if cari_iso:
+        tgl_iso_ditemukan = cari_iso[0]
+
+    bulan_regex = r"(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)"
+    cari_indo = re.findall(rf"\b(\d{{1,2}}\s+{bulan_regex}\s+20\d{{2}})\b", gabungan_teks, flags=re.IGNORECASE)
+    if cari_indo:
+        tgl_indo_ditemukan = cari_indo[0]
+
+    return tgl_iso_ditemukan, tgl_indo_ditemukan
+
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru):
     img = img_pil.convert("RGBA")
     w, h = img.size
 
-    bx0, by0 = 0, int(h * 0.722)
-    bx1, by1 = int(w * 0.845), int(h * 0.985)
+    bx0, by0 = 0, int(h * 0.720)
+    bx1, by1 = int(w * 0.885), int(h * 0.985)
     box_w, box_h = bx1 - bx0, by1 - by0
 
-    # Nilai default jika OCR gagal membaca sebagian baris
     jam_asli = "09:00"
     koordinat_asli = "-6.9721328,110.416271"
     baris_alamat = [
@@ -137,23 +149,29 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
         "Indonesia"
     ]
 
+    def bersihkan_baris_alamat(teks):
+        teks_bersih = re.sub(r"[^A-Za-z0-9,\s]", "", teks)
+        teks_bersih = re.sub(r"^([A-Za-z0-9]{1,2}\s+)+", "", teks_bersih.strip())
+        teks_bersih = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", teks_bersih.strip())
+        teks_bersih = re.sub(r"\s+", " ", teks_bersih).strip(" ,")
+        teks_bersih = re.sub(r"Kota Semaran\b", "Kota Semarang", teks_bersih, flags=re.IGNORECASE)
+        return teks_bersih
+
     try:
         import pytesseract
         crop_ocr = img.crop((bx0, by0, bx1, by1)).convert("L")
         crop_ocr = crop_ocr.resize((crop_ocr.width * 2, crop_ocr.height * 2), Image.Resampling.LANCZOS)
+        crop_ocr = crop_ocr.point(lambda p: 255 if p > 175 else 0)
         teks_ocr = pytesseract.image_to_string(crop_ocr, config="--psm 6")
 
-        # 1. Ambil jam asli (HH:MM)
         cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
         if cari_jam:
             jam_asli = cari_jam[0]
 
-        # 2. Ambil koordinat asli
         cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
         if cari_koord:
             koordinat_asli = cari_koord[0].replace(" ", "")
 
-        # 3. Ambil baris-baris alamat asli setelah baris koordinat (Genuk, Pedurungan, dll.)
         semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
         idx_koord = -1
         for i, b in enumerate(semua_baris):
@@ -162,9 +180,18 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
                 break
 
         if idx_koord != -1 and len(semua_baris) > idx_koord + 1:
-            kandidat_alamat = semua_baris[idx_koord + 1 : idx_koord + 4]
-            if len(kandidat_alamat) >= 1:
-                baris_alamat = kandidat_alamat
+            kandidat_mentah = semua_baris[idx_koord + 1 : idx_koord + 4]
+            kandidat_bersih = []
+            for k in kandidat_mentah:
+                hasil_k = bersihkan_baris_alamat(k)
+                if "indonesia" in hasil_k.lower():
+                    hasil_k = "Indonesia"
+                elif "jawa tengah" in hasil_k.lower():
+                    hasil_k = "Jawa Tengah"
+                if len(hasil_k) >= 4:
+                    kandidat_bersih.append(hasil_k)
+            if len(kandidat_bersih) >= 1:
+                baris_alamat = kandidat_bersih
     except Exception:
         pass
 
@@ -183,30 +210,31 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
 
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 132))
+    draw.rectangle([bx0, by0, bx1, by1], fill=(8, 8, 8, 165))
 
-    ukuran_font = max(11, int(w * 0.0365))
+    ukuran_font = max(11, int(w * 0.034))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
 
-    # Gabungkan baris tanggal baru + jam asli + koordinat asli + alamat asli foto tersebut
     baris_teks = [
         f"{teks_hari_tanggal_baru} {jam_asli}",
         koordinat_asli
     ] + baris_alamat
 
     margin_kiri = int(w * 0.016)
-    y_teks = by0 + int(box_h * 0.045)
-    spasi_baris = int(ukuran_font * 1.30)
+    y_teks = by0 + int(box_h * 0.05)
+    spasi_baris = int(ukuran_font * 1.32)
 
     for baris in baris_teks:
-        draw.text((margin_kiri + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 150))
-        draw.text((margin_kiri, y_teks), baris, font=font, fill=(242, 242, 242, 252))
+        for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)]:
+            draw.text((margin_kiri + ox, y_teks + oy), baris, font=font, fill=(0, 0, 0, 210))
+        draw.text((margin_kiri, y_teks), baris, font=font, fill=(255, 255, 255, 255))
         y_teks += spasi_baris
 
     return Image.alpha_composite(img, overlay).convert("RGB")
+
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
     for blok in data_teks.get("blocks", []):
@@ -220,12 +248,11 @@ def deteksi_gaya_teks(halaman, teks_target):
                         return span.get("size", 9.0), is_bold, span.get("origin")
     return None, False, None
 
-def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_watermark_baru="Jumat, 03 Januari 2025"):
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_watermark_baru="Sabtu, 11 Januari 2025"):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_teks, total_gbr, xref_done = 0, 0, set()
 
     for idx_hal, halaman in enumerate(doc):
-        # 1. Ganti seluruh teks tanggal di semua halaman (termasuk halaman 1)
         for teks_lama, teks_baru in daftar_ganti:
             if not teks_lama.strip():
                 continue
@@ -239,7 +266,6 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
                 halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname=font_pakai, color=(0, 0, 0))
                 total_teks += 1
 
-        # 2. Edit watermark hanya pada foto dokumentasi (lewati halaman 1 / lembar header logo KAI)
         if edit_gambar and idx_hal > 0:
             for img_info in halaman.get_images(full=True):
                 xref = img_info[0]
@@ -252,8 +278,6 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
                     continue
 
                 pil_cek = Image.open(io.BytesIO(base_image["image"])).convert("RGB")
-
-                # Filter anti-logo: cek sudut kiri atas & kanan atas gambar; jika putih polos (>245), lewati
                 p_kiri_atas = pil_cek.getpixel((5, 5))
                 p_kanan_atas = pil_cek.getpixel((w_img - 6, 5))
                 if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
@@ -274,14 +298,18 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
 
 if not st.session_state.login_sukses:
     st.write("")
+    st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
         st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
         st.markdown("### Masuk Ruang Kerja 👋")
+        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
+        st.write("")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
+        st.write("")
         if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
@@ -328,22 +356,33 @@ main_area, right_panel = st.columns([2.7, 1.05], gap="medium")
 with main_area:
     if st.session_state.menu_aktif == "📅 Auto-Ubah Tanggal PDF & Foto":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (100% Sinkron Otomatis)")
-        st.caption("Tanggal dan nama hari di dalam foto dokumentasi otomatis mengikuti tanggal baru yang kamu masukkan di bawah.")
+        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (Deteksi Otomatis)")
+        st.caption("Tanggal asli di dalam PDF otomatis terbaca saat file diunggah, dan seluruh teks serta foto akan sinkron ke tanggal baru.")
         pdf_tanggal = st.file_uploader("📥 Unggah File PDF Laporan Perawatan", type=["pdf"])
+
+        default_lama_1 = "2026-10-01"
+        default_lama_2 = "01 Oktober 2026"
+        pdf_bytes_cache = None
+
+        if pdf_tanggal is not None:
+            pdf_bytes_cache = pdf_tanggal.getvalue()
+            det_iso, det_indo = deteksi_tanggal_otomatis_pdf(pdf_bytes_cache)
+            if det_iso:
+                default_lama_1 = det_iso
+            if det_indo:
+                default_lama_2 = det_indo
+
         c1, c2 = st.columns(2)
         with c1:
-            lama_1 = st.text_input("Jenis 1 (Format ISO)", value="2026-09-20")
-            lama_2 = st.text_input("Jenis 2 (Format Header & Foto)", value="20 September 2026")
+            lama_1 = st.text_input("Jenis 1 (Terdeteksi Otomatis - ISO)", value=default_lama_1, key=f"l1_{default_lama_1}")
+            lama_2 = st.text_input("Jenis 2 (Terdeteksi Otomatis - Header)", value=default_lama_2, key=f"l2_{default_lama_2}")
             lama_3 = st.text_input("Jenis 3 (Opsional)", value="")
         with c2:
-            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-02-12")
-            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="12 Februari 2025")
+            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-01-11")
+            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="11 Januari 2025")
             baru_3 = st.text_input("Ubah Jenis 3 Menjadi (Opsional)", value="")
 
-        # Otomatis hitung nama hari Indonesia dari tanggal baru (misal 12 Februari 2025 -> Rabu, 12 Februari 2025)
         def buat_hari_tanggal_indo(teks_tgl, teks_iso=""):
-            import datetime
             hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
             bulan_map = {
                 "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
@@ -368,16 +407,18 @@ with main_area:
         otomatis_wm = buat_hari_tanggal_indo(baru_2, baru_1)
         edit_foto_pdf = st.checkbox(f"✅ Otomatis ubah tanggal di dalam seluruh foto menjadi: **{otomatis_wm}**", value=True)
 
-        if pdf_tanggal and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
+        if pdf_bytes_cache and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
             with st.spinner("Mendeteksi jenis font asli & menyinkronkan seluruh halaman serta foto..."):
                 hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(
-                    pdf_tanggal, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)],
+                    pdf_bytes_cache, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)],
                     edit_foto_pdf, otomatis_wm
                 )
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Auto-Tanggal", "detail": f"{pdf_tanggal.name[:22]}... ({jml_teks} teks, {jml_gbr} foto)"})
                 st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
-                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', baru_1)}", "application/pdf", use_container_width=True)
+                nama_file_out = f"Revisi_{pdf_tanggal.name.replace(lama_1, baru_1)}"
+                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, nama_file_out, "application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
     elif "Bersihkan" in st.session_state.menu_aktif:
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
         pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
@@ -422,7 +463,7 @@ with main_area:
                 hasil_pdf_bytes = proses_dokumen(pdf_file, data_siap_proses)
                 nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Jahit Foto", "detail": f"{len(data_siap_proses)} aset dijahit"})
-                st.markdown("""<style>@keyframes sprint{0%{transform:translateX(-50%);}95%{transform:translateX(90%);}100%{transform:translateX(100%);opacity:0;}}.track-lari{overflow:hidden;width:100%;background:rgba(40,37,98,0.5);padding:5px 0;border-radius:8px;border-right:12px solid #ec6923;margin-bottom:15px;}.pelari{display:inline-block;font-size:50px;animation:sprint 2.5s forwards;}</style><div class="track-lari"><div class="pelari">🏃‍♂️💨</div></div><div style="text-align:center;color:#ec6923;font-weight:800;font-size:1.3rem;">🏆 FINISH ! Dokumen Selesai Dijahit!</div>""", unsafe_allow_html=True)
+                st.success("🏆 Dokumen Selesai Dijahit!")
                 st.download_button("⬇️ Unduh File Final: " + nama_unduh, data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
