@@ -118,22 +118,83 @@ def proses_dokumen(pdf_file, data_rangkaian):
     doc.close()
     return output_pdf.getvalue()
 
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.015, rasio_y0=0.725, rasio_x1=0.63, rasio_y1=0.775):
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.012, rasio_y0=0.720, rasio_x1=0.78, rasio_y1=0.778):
+    """
+    Membersihkan baris tanggal lama secara natural menggunakan kloning tekstur latar
+    dengan tepi halus (feathered mask), menggeser blok jam asli agar rapat dengan
+    tanggal baru, dan mencetak tanggal baru dengan gaya font identik Timemark.
+    """
+    from PIL import ImageFilter
+
     img = img_pil.convert("RGBA")
     w, h = img.size
-    x0, y0, x1, y1 = int(w * rasio_x0), int(h * rasio_y0), int(w * rasio_x1), int(h * rasio_y1)
-    warna_bg = img.getpixel((min(w - 2, x1 + 4), max(1, y0 + 2)))
-    warna_bg = (55, 55, 55, 215) if sum(warna_bg[:3]) > 350 else (warna_bg[0], warna_bg[1], warna_bg[2], 235)
-    overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
-    draw.rectangle([x0, y0, x1, y1], fill=warna_bg)
-    ukuran_font = max(10, int(max(10, y1 - y0) * 0.85))
+
+    x0 = int(w * rasio_x0)
+    y0 = int(h * rasio_y0)
+    x1 = int(w * rasio_x1)
+    y1 = int(h * rasio_y1)
+    tinggi_baris = max(12, y1 - y0)
+
+    # 1. Potong & simpan blok piksel JAM ASLI di ujung kanan baris tanggal (misal "09:04")
+    # Pada teks "Minggu, 20 September 2026 09:04", jam berada sekitar rasio X 0.56 s/d 0.72
+    jam_x0 = int(w * 0.555)
+    jam_x1 = int(w * 0.725)
+    potongan_jam = img.crop((jam_x0, y0, jam_x1, y1))
+
+    # 2. Ambil tekstur bersih tepat di atas kotak watermark (area rel/ballast)
+    # lalu gelapkan agar menyatu dengan kotak bayangan Timemark
+    sumber_y0 = max(0, int(h * 0.64))
+    sumber_y1 = sumber_y0 + tinggi_baris
+    tambalan = img.crop((x0, sumber_y0, x1, sumber_y1)).convert("RGBA")
+    # Gelapkan tambalan agar menyerupai bayangan transparan Timemark (sekitar 48% kecerahan)
+    gelap = Image.new("RGBA", tambalan.size, (18, 18, 18, 135))
+    tambalan = Image.alpha_composite(tambalan, gelap)
+
+    # Buat masker tepi halus (Gaussian Blur) agar tidak ada garis potong kotak
+    mask = Image.new("L", tambalan.size, 0)
+    draw_mask = ImageDraw.Draw(mask)
+    pad = max(2, int(tinggi_baris * 0.15))
+    draw_mask.rectangle([pad, pad, tambalan.width - pad, tambalan.height - pad], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=max(2, int(tinggi_baris * 0.18))))
+
+    # Tempelkan tambalan tekstur halus menutupi seluruh baris tanggal & jam lama
+    img.paste(tambalan, (x0, y0), mask)
+
+    # 3. Tulis tanggal baru (misal "Jumat, 03 Januari 2025") dengan font bersih & bayangan tipis
+    ukuran_font = max(11, int(tinggi_baris * 0.84))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
-    draw.text((x0 + 2, y0), teks_hari_tanggal_baru, font=font, fill=(245, 245, 245, 255))
-    return Image.alpha_composite(img, overlay).convert("RGB")
+
+    overlay_teks = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw_teks = ImageDraw.Draw(overlay_teks)
+    pos_x_teks = x0 + int(w * 0.008)
+    pos_y_teks = y0 + int(tinggi_baris * 0.04)
+
+    # Bayangan lembut 1px khas render teks kamera HP agar tidak terlihat "mengambang"
+    draw_teks.text((pos_x_teks + 1, pos_y_teks + 1), teks_hari_tanggal_baru, font=font, fill=(0, 0, 0, 140))
+    draw_teks.text((pos_x_teks, pos_y_teks), teks_hari_tanggal_baru, font=font, fill=(238, 238, 238, 250))
+
+    # Hitung lebar teks tanggal baru untuk menempatkan potongan JAM ASLI tepat di sebelahnya
+    try:
+        bbox = draw_teks.textbbox((pos_x_teks, pos_y_teks), teks_hari_tanggal_baru, font=font)
+        akhir_x_tanggal = bbox[2]
+    except Exception:
+        akhir_x_tanggal = pos_x_teks + int(len(teks_hari_tanggal_baru) * ukuran_font * 0.53)
+
+    img = Image.alpha_composite(img, overlay_teks)
+
+    # 4. Tempel kembali potongan JAM ASLI rapat di sebelah kanan tanggal baru dengan tepi halus
+    mask_jam = Image.new("L", potongan_jam.size, 0)
+    draw_mj = ImageDraw.Draw(mask_jam)
+    draw_mj.rectangle([2, 1, potongan_jam.width - 2, potongan_jam.height - 1], fill=255)
+    mask_jam = mask_jam.filter(ImageFilter.GaussianBlur(radius=1.5))
+
+    posisi_jam_baru = akhir_x_tanggal + int(ukuran_font * 0.25)
+    img.paste(potongan_jam, (posisi_jam_baru, y0), mask_jam)
+
+    return img.convert("RGB")
 
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
