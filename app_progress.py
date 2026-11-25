@@ -325,7 +325,7 @@ if not st.session_state.login_sukses:
 </style>
 <div class='login-brand-panel framer-panel'>
     <h1>IMO2025 📑 dR</h1>
-    <p></p>""", unsafe_allow_html=True)
+    <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>""", unsafe_allow_html=True)
 
         file_peloton = (
             "runner_peloton.jpeg" if os.path.exists("runner_peloton.jpeg")
@@ -356,13 +356,13 @@ if not st.session_state.login_sukses:
     with col_right:
         st.write("")
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### MASUK RUANG KERJA 👋")
+        st.markdown("### Masuk Ruang Kerja 👋")
         st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
         st.write("")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         st.write("")
-        if st.button("MASUK RUANG KERJA", use_container_width=True):
+        if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
                 st.rerun()
