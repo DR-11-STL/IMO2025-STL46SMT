@@ -345,10 +345,10 @@ if not st.session_state.login_sukses:
     st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p></p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
+        st.markdown("### MASUK RUANG KERJA 👋")
         st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
         st.write("")
         username = st.text_input("Username")
@@ -369,9 +369,9 @@ with st.sidebar:
     st.divider()
     st.session_state.menu_aktif = st.radio("Mode Aplikasi", [
         "📅 Auto-Ubah Tanggal PDF & Foto",
-        "🧹 Hanya Bersihkan Kotak Pink Anotasi",
-        "🚀 Bersihkan Anotasi & Jahit Foto Progres",
-        "📸 Generator Foto Kegiatan Watermark"
+        "🧹 Bersihkan Kotak Pink Anotasi",
+        "🚀 Foto Progres 0-50-100%",
+        "📸 Generator Foto Watermark"
     ], label_visibility="collapsed")
     st.divider()
     mode_gelap = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
@@ -383,7 +383,7 @@ with st.sidebar:
         st.session_state.login_sukses = False
         st.rerun()
 
-st.markdown("### Selamat Bekerja 👋")
+st.markdown("### Selamat Bekerja dR 👋")
 
 kpi1, kpi2, kpi3, kpi4 = st.columns([1.4, 1, 1, 1.2])
 with kpi1:
