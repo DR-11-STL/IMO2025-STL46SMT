@@ -1,19 +1,18 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 import io
 import zipfile
 import urllib.request
 import textwrap
+import re
+import datetime
 
-# --- KONFIGURASI USERNAME & PASSWORD ---
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
-# --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
 
-# --- STATE MANAGEMENT ---
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 if "dark_mode" not in st.session_state:
@@ -25,11 +24,8 @@ if "riwayat_proses" not in st.session_state:
         {"waktu": "Hari ini", "modul": "Sistem Siap", "detail": "Menunggu dokumen checklist"}
     ]
 
-# --- PALET WARNA PRESISI RGB(40, 37, 98) & RGB(236, 105, 35) ---
 NAVY_RGB = "rgb(40, 37, 98)"
-NAVY_HEX = "#282562"
 ORANGE_RGB = "rgb(236, 105, 35)"
-ORANGE_HEX = "#ec6923"
 
 if st.session_state.dark_mode:
     BG_APP, BG_SIDEBAR, BG_CARD, BORDER_CARD = "#0B0E17", "#101422", "#14192B", "rgba(40, 37, 98, 0.55)"
@@ -46,8 +42,8 @@ html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !impor
 section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD};}}
 .stMarkdown p, label, span {{color: {TEXT_PRIMARY} !important;}}
 .title-kai {{font-size: 2.3rem; font-weight: 900; margin: 0; color: {NAVY_RGB}; -webkit-text-stroke: 1.2px #FFFFFF; text-shadow: 2px 2px 6px rgba(0,0,0,0.7);}}
-.login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 40px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
-.login-brand-panel h1 {{font-size: 3.2rem; font-weight: 900; color: {NAVY_RGB}; -webkit-text-stroke: 1.5px #FFFFFF; margin-bottom: 10px;}}
+.login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 36px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
+.login-brand-panel h1 {{font-size: 3.1rem; font-weight: 900; color: {NAVY_RGB}; -webkit-text-stroke: 1.5px #FFFFFF; margin-bottom: 10px;}}
 .login-brand-panel p {{color: #E2E8F0 !important; font-size: 0.95rem;}}
 .feature-pill {{display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; color: #FFFFFF !important; margin: 8px 6px 0 0;}}
 .bento-card {{background-color: {BG_CARD}; border: 1px solid {BORDER_CARD}; border-radius: 16px; padding: 20px; margin-bottom: 16px;}}
@@ -84,14 +80,14 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if not ada_yang_dihapus:
                 break
         halaman.clean_contents()
-                
+
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
         lebar_gambar, tinggi_gambar, spasi = 150, 150, 30
-        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2 
+        mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2
         y_pos, items_per_page = 60, 0
         halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
-        
+
         for data in data_rangkaian:
             if items_per_page >= 3:
                 halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
@@ -110,18 +106,15 @@ def proses_dokumen(pdf_file, data_rangkaian):
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
                 halaman_baru.insert_text(fitz.Point(x0 + 60, y0 + tinggi_gambar + 20), item["label"], fontsize=14, color=(0, 0, 0))
-            y_pos += 210  
+            y_pos += 210
             items_per_page += 1
-        
+
     output_pdf = io.BytesIO()
     doc.save(output_pdf, garbage=2, deflate=True)
     doc.close()
     return output_pdf.getvalue()
 
 def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_y0=0.722, rasio_x1=0.845, rasio_y1=0.985):
-    from PIL import ImageFilter
-    import re
-
     img = img_pil.convert("RGBA")
     w, h = img.size
 
@@ -131,6 +124,12 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
 
     jam_asli = "09:00"
     koordinat_asli = "-6.9721328,110.416271"
+    baris_alamat = [
+        "Kecamatan Semarang Utara, Kota Semarang",
+        "Jawa Tengah",
+        "Indonesia"
+    ]
+
     try:
         import pytesseract
         crop_ocr = img.crop((bx0, by0, bx1, by1)).convert("L")
@@ -144,6 +143,18 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
         cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
         if cari_koord:
             koordinat_asli = cari_koord[0].replace(" ", "")
+
+        semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
+        idx_koord = -1
+        for i, b in enumerate(semua_baris):
+            if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
+                idx_koord = i
+                break
+
+        if idx_koord != -1 and len(semua_baris) > idx_koord + 1:
+            kandidat_alamat = semua_baris[idx_koord + 1 : idx_koord + 4]
+            if len(kandidat_alamat) >= 1:
+                baris_alamat = kandidat_alamat
     except Exception:
         pass
 
@@ -172,11 +183,8 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, rasio_x0=0.0, rasio_
 
     baris_teks = [
         f"{teks_hari_tanggal_baru} {jam_asli}",
-        koordinat_asli,
-        "Kecamatan Semarang Utara, Kota Semarang",
-        "Jawa Tengah",
-        "Indonesia"
-    ]
+        koordinat_asli
+    ] + baris_alamat
 
     margin_kiri = int(w * 0.016)
     y_teks = by0 + int(box_h * 0.045)
@@ -240,302 +248,30 @@ def proses_multi_tanggal_pdf(pdf_file, daftar_ganti, edit_gambar=True, teks_wate
 
 if not st.session_state.login_sukses:
     st.write("")
-    st.write("")
     _, col_left, col_right, _ = st.columns([0.45, 2.35, 2.05, 0.45], gap="large")
-    
     with col_left:
-        st.markdown("""
-        <style>
-        /* Animasi Masuk Panel (Framer Motion Spring) */
-        @keyframes framerEntrance {
-            0% { opacity: 0; transform: translateY(28px) scale(0.97); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        
-        /* Animasi Aliran Garis Kecepatan Terus-menerus */
-        @keyframes speedFlow {
-            0% { stroke-dashoffset: 160; }
-            100% { stroke-dashoffset: -160; }
-        }
-        
-        /* Animasi Hembusan Partikel Debu Cahaya */
-        @keyframes particleBlow {
-            0% { transform: translateX(180px) scaleX(1); opacity: 0; }
-            30% { opacity: 0.8; }
-            70% { opacity: 0.8; }
-            100% { transform: translateX(-120px) scaleX(0.5); opacity: 0; }
-        }
-
-        /* ----------------- ANIMASI GERAKAN LARI HALUS (PHYSICS-BASED) ----------------- */
-        /* Pelari 1 (Paling Depan - Sangat Cepat & Lincah) */
-        @keyframes strideLead {
-            0%, 100% { transform: translateY(0px) skewX(0deg); }
-            25% { transform: translateY(-4px) skewX(-2deg); }
-            50% { transform: translateY(-1px) skewX(1deg); }
-            75% { transform: translateY(-5px) skewX(-1deg); }
-        }
-        @keyframes limbLead {
-            0%, 100% { d: path("M26 18 L18 37 L4 52 M18 37 L31 49 L26 64 M25 21 L38 28 L46 20 M23 21 L11 28 L3 36"); }
-            50% { d: path("M26 18 L15 37 L10 50 M15 37 L23 48 L40 60 M25 21 L34 26 L26 16 M23 21 L16 29 L28 36"); }
-        }
-
-        /* Pelari 2 (Tengah - Tempo Konsisten) */
-        @keyframes strideMid {
-            0%, 100% { transform: translateY(-1px) skewX(-1deg); }
-            33% { transform: translateY(-5px) skewX(-3deg); }
-            66% { transform: translateY(0px) skewX(0deg); }
-        }
-        @keyframes limbMid {
-            0%, 100% { d: path("M25 18 L17 36 L3 48 M17 36 L28 47 L21 61 M24 21 L36 28 L43 21 M22 21 L11 27 L3 34"); }
-            50% { d: path("M25 18 L14 36 L9 46 M14 36 L21 47 L34 58 M24 21 L32 26 L24 15 M22 21 L14 28 L23 34"); }
-        }
-
-        /* Pelari 3 (Belakang - Tenang Namun Bertenaga) */
-        @keyframes strideBack {
-            0%, 100% { transform: translateY(-2px) skewX(0deg); }
-            40% { transform: translateY(0px) skewX(-2deg); }
-            80% { transform: translateY(-4px) skewX(1deg); }
-        }
-        @keyframes limbBack {
-            0%, 100% { d: path("M24 18 L16 35 L2 46 M16 35 L27 46 L18 59 M23 21 L35 28 L41 21 M21 21 L10 27 L2 33"); }
-            50% { d: path("M24 18 L13 35 L8 44 M13 35 L19 46 L30 56 M23 21 L31 26 L23 14 M21 21 L12 28 L20 33"); }
-        }
-
-        /* Kelas Pengendali Jalur Animasi */
-        .framer-panel {
-            animation: framerEntrance 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-        }
-        .peloton-stage {
-            margin: 18px 0 14px 0;
-            padding: 16px 20px 10px 20px;
-            background: rgba(11, 14, 23, 0.42);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            border-radius: 16px;
-            backdrop-filter: blur(10px);
-            overflow: hidden;
-            position: relative;
-        }
-        
-        /* Penerapan Gerakan Elastis Pada Pelari */
-        .run-body-1 { animation: strideLead 0.58s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
-        .run-body-2 { animation: strideMid 0.64s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
-        .run-body-3 { animation: strideBack 0.70s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite; }
-
-        .run-limbs-1 { animation: limbLead 0.58s steps(15, end) infinite; }
-        .run-limbs-2 { animation: limbMid 0.64s steps(15, end) infinite; }
-        .run-limbs-3 { animation: limbBack 0.70s steps(15, end) infinite; }
-
-        /* Penerapan Aliran Kecepatan Lintasan & Udara */
-        .track-fast { stroke-dasharray: 80, 50; animation: speedFlow 0.8s linear infinite; }
-        .track-slow { stroke-dasharray: 100, 80; animation: speedFlow 1.6s linear infinite; }
-        
-        .wind-line-1 { stroke-dasharray: 40, 90; animation: speedFlow 0.5s linear infinite; }
-        .wind-line-2 { stroke-dasharray: 55, 120; animation: speedFlow 0.7s linear infinite; }
-        .wind-line-3 { stroke-dasharray: 30, 80; animation: speedFlow 0.4s linear infinite; }
-
-        .particle-1 { animation: particleBlow 1.1s linear infinite; }
-        .particle-2 { animation: particleBlow 1.4s linear 0.4s infinite; }
-        .particle-3 { animation: particleBlow 0.9s linear 0.7s infinite; }
-        </style>
-
-        <div class='login-brand-panel framer-panel'>
-            <h1>IMO2025 📑 dR</h1>
-            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>
-            
-            <div class='peloton-stage'>
-                <svg viewBox="0 0 360 92" width="100%" height="84" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <!-- Gradasi Mewah untuk Jejak Jalur Larinya -->
-                        <linearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="rgba(236,105,35,0)" />
-                            <stop offset="45%" stop-color="#ec6923" />
-                            <stop offset="90%" stop-color="#3B378C" />
-                            <stop offset="100%" stop-color="rgba(255,255,255,0.4)" />
-                        </linearGradient>
-                        <filter id="glowOrange" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="2.5" result="blur" />
-                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                        <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="1.8" result="blur" />
-                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                    </defs>
-
-                    <!-- Garis Aliran Udara Terusan (Wind Speed) -->
-                    <line class="wind-line-1" x1="-10" y1="12" x2="370" y2="12" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
-                    <line class="wind-line-2" x1="-10" y1="28" x2="370" y2="28" stroke="rgba(236,105,35,0.12)" stroke-width="1.5" />
-                    <line class="wind-line-3" x1="-10" y1="46" x2="370" y2="46" stroke="rgba(59,55,140,0.18)" stroke-width="1.2" />
-
-                    <!-- Partikel Debu Kecepatan Berseliweran -->
-                    <circle class="particle-1" cx="0" cy="18" r="1.5" fill="#ec6923" />
-                    <circle class="particle-2" cx="0" cy="36" r="2" fill="#FFFFFF" />
-                    <circle class="particle-3" cx="0" cy="50" r="1.2" fill="#3B378C" />
-
-                    <!-- Lintasan Neon Bawah -->
-                    <line class="track-slow" x1="10" y1="78" x2="350" y2="78" stroke="url(#trackGrad)" stroke-width="2.5" stroke-linecap="round" />
-                    <line class="track-fast" x1="20" y1="81" x2="340" y2="81" stroke="#FFFFFF" opacity="0.6" stroke-width="1" stroke-linecap="round" />
-
-                    <!-- Pelari 3 (Belakang - Siluet Biru Lembut) -->
-                    <g class="run-body-3" transform="translate(68, 11)" opacity="0.48" filter="url(#glowBlue)">
-                        <circle cx="26" cy="10" r="5.2" fill="#94A3B8" />
-                        <path class="run-limbs-3" d="M24 18 L16 35 L2 46 M16 35 L27 46 L18 59 M23 21 L35 28 L41 21 M21 21 L10 27 L2 33" stroke="#94A3B8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    </g>
-
-                    <!-- Pelari 2 (Tengah - Siluet Transparan Ringan) -->
-                    <g class="run-body-2" transform="translate(138, 8)" opacity="0.75">
-                        <circle cx="27" cy="10" r="5.6" fill="#CBD5E1" />
-                        <path class="run-limbs-2" d="M25 18 L17 36 L3 48 M17 36 L28 47 L21 61 M24 21 L36 28 L43 21 M22 21 L11 27 L3 34" stroke="#E2E8F0" stroke-width="4.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    </g>
-
-                    <!-- Pelari 1 (Paling Depan - Putih Mengkilap Dengan Glow Oranye) -->
-                    <g class="run-body-1" transform="translate(208, 5)" filter="url(#glowOrange)">
-                        <!-- Kepala -->
-                        <circle cx="29" cy="10" r="6" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.8" />
-                        <!-- Badan, Tangan, dan Kaki (Bisa Mengayun Lewat Keyframes d:) -->
-                        <path class="run-limbs-1" d="M26 18 L18 37 L4 52 M18 37 L31 49 L26 64 M25 21 L38 28 L46 20 M23 21 L11 28 L3 36" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                        <!-- Detail Pinggul/Punggung Ekstra Kontras -->
-                        <path d="M25 21 L36 27" stroke="#ec6923" stroke-width="2.2" stroke-linecap="round" />
-                    </g>
-                </svg>
-            </div>
-
-            <div>
-                <span class='feature-pill'>📅 Auto-Tanggal PDF</span>
-                <span class='feature-pill'>🧹 Hapus Kotak Pink</span>
-                <span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span>
-                <span class='feature-pill'>📸 Watermark</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_right:
-        st.write("")
-        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
-        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
-        st.write("")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        st.write("")
-        if st.button("Masuk Ruang Kerja", use_container_width=True):
-            if username == USER_VALID and password == PASS_VALID:
-                st.session_state.login_sukses = True
-                st.rerun()
-            else:
-                st.error("❌ Username atau Password salah!")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-st.markdown("""<div class='peloton-box'><svg viewBox="0 0 360 88" width="100%" height="78" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(236,105,35,0)"/><stop offset="50%" stop-color="#ec6923"/><stop offset="100%" stop-color="#FFFFFF"/></linearGradient></defs><line class="speed-flow" x1="15" y1="26" x2="145" y2="26" stroke="#ec6923" stroke-width="2" stroke-linecap="round"/><line class="speed-flow" x1="35" y1="44" x2="175" y2="44" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="76" x2="348" y2="76" stroke="url(#tg)" stroke-width="2.6" stroke-linecap="round"/><g class="r-bob3" transform="translate(88,10)" opacity="0.5"><circle cx="24" cy="9" r="5" fill="#CBD5E1"/><path d="M22 16 L17 34" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M17 34 L8 54" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M17 34 L27 52" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M22 19 L11 30" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/><path class="limb-b" d="M22 19 L33 28" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/></g><g class="r-bob2" transform="translate(152,8)" opacity="0.78"><circle cx="24" cy="9" r="5.3" fill="#E2E8F0"/><path d="M22 16 L17 35" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-a" d="M17 35 L7 56" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M17 35 L28 54" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M22 19 L10 31" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/><path class="limb-a" d="M22 19 L34 29" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/></g><g class="r-bob1" transform="translate(218,6)"><circle cx="25" cy="9" r="5.8" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.6"/><path d="M23 16 L17 36" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-b" d="M17 36 L6 58" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M17 36 L30 55" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M23 19 L10 32" stroke="#ec6923" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M23 19 L36 29" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></g></svg></div><div><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<style>
+@keyframes framerSpringIn {0%{opacity:0;transform:translateY(24px) scale(0.98);}100%{opacity:1;transform:translateY(0) scale(1);}}
+@keyframes trackGlide {0%{stroke-dashoffset:200;}100%{stroke-dashoffset:-200;}}
+@keyframes pelotonBob {0%,100%{transform:translateY(0px) rotate(0deg);}50%{transform:translateY(-5px) rotate(2deg);}}
+@keyframes swingFwd {0%,100%{transform:rotate(-26deg);}50%{transform:rotate(28deg);}}
+@keyframes swingBwd {0%,100%{transform:rotate(28deg);}50%{transform:rotate(-26deg);}}
+.framer-card{animation:framerSpringIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards;}
+.peloton-stage{margin:16px 0 12px 0;padding:12px 14px 6px 14px;background:rgba(11,14,23,0.42);border:1px solid rgba(255,255,255,0.16);border-radius:16px;overflow:hidden;}
+.r-lead{animation:pelotonBob 0.5s cubic-bezier(0.45,0,0.55,1) infinite;}
+.r-mid{animation:pelotonBob 0.56s cubic-bezier(0.45,0,0.55,1) 0.14s infinite;}
+.r-back{animation:pelotonBob 0.62s cubic-bezier(0.45,0,0.55,1) 0.28s infinite;}
+.arm-a,.leg-a{animation:swingFwd 0.5s ease-in-out infinite;transform-box:fill-box;transform-origin:top center;}
+.arm-b,.leg-b{animation:swingBwd 0.5s ease-in-out infinite;transform-box:fill-box;transform-origin:top center;}
+.wind-streak{stroke-dasharray:65,55;animation:trackGlide 0.72s linear infinite;}
+.neon-lane{stroke-dasharray:110,70;animation:trackGlide 1.3s linear infinite;}
+</style><div class='login-brand-panel framer-card'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div class='peloton-stage'><svg viewBox="0 0 360 88" width="100%" height="78" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="laneGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(236,105,35,0)"/><stop offset="50%" stop-color="#ec6923"/><stop offset="100%" stop-color="#FFFFFF"/></linearGradient></defs><line class="wind-streak" x1="12" y1="24" x2="155" y2="24" stroke="#ec6923" stroke-width="2" stroke-linecap="round"/><line class="wind-streak" x1="32" y1="42" x2="185" y2="42" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/><line class="neon-lane" x1="10" y1="76" x2="350" y2="76" stroke="url(#laneGrad)" stroke-width="2.6" stroke-linecap="round"/><g class="r-back" transform="translate(86,10)" opacity="0.5"><circle cx="24" cy="9" r="5" fill="#CBD5E1"/><path d="M22 16 L17 34" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="leg-b" d="M17 34 L8 54" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="leg-a" d="M17 34 L27 52" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="arm-a" d="M22 19 L11 30" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/><path class="arm-b" d="M22 19 L33 28" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/></g><g class="r-mid" transform="translate(152,8)" opacity="0.78"><circle cx="24" cy="9" r="5.3" fill="#E2E8F0"/><path d="M22 16 L17 35" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="leg-a" d="M17 35 L7 56" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="leg-b" d="M17 35 L28 54" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="arm-b" d="M22 19 L10 31" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/><path class="arm-a" d="M22 19 L34 29" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/></g><g class="r-lead" transform="translate(218,6)"><circle cx="25" cy="9" r="5.8" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.6"/><path d="M23 16 L17 36" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="leg-b" d="M17 36 L6 58" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="leg-a" d="M17 36 L30 55" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="arm-a" d="M23 19 L10 32" stroke="#ec6923" stroke-width="4" stroke-linecap="round"/><path class="arm-b" d="M23 19 L36 29" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></g></svg></div><div><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
         st.markdown("### Masuk Ruang Kerja 👋")
         st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
-        if st.button("Masuk Ruang Kerja", use_container_width=True):
-            if username == USER_VALID and password == PASS_VALID:
-                st.session_state.login_sukses = True
-                st.rerun()
-            else:
-                st.error("❌ Username atau Password salah!")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-    st.markdown("""<div class='peloton-box'><svg viewBox="0 0 360 88" width="100%" height="78" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="rgba(236,105,35,0)"/><stop offset="50%" stop-color="#ec6923"/><stop offset="100%" stop-color="#FFFFFF"/></linearGradient></defs><line class="speed-flow" x1="15" y1="26" x2="145" y2="26" stroke="#ec6923" stroke-width="2" stroke-linecap="round"/><line class="speed-flow" x1="35" y1="44" x2="175" y2="44" stroke="rgba(255,255,255,0.55)" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="76" x2="348" y2="76" stroke="url(#tg)" stroke-width="2.6" stroke-linecap="round"/><g class="r-bob3" transform="translate(88,10)" opacity="0.5"><circle cx="24" cy="9" r="5" fill="#CBD5E1"/><path d="M22 16 L17 34" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M17 34 L8 54" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M17 34 L27 52" stroke="#CBD5E1" stroke-width="4" stroke-linecap="round"/><path class="limb-a" d="M22 19 L11 30" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/><path class="limb-b" d="M22 19 L33 28" stroke="#CBD5E1" stroke-width="3.5" stroke-linecap="round"/></g><g class="r-bob2" transform="translate(152,8)" opacity="0.78"><circle cx="24" cy="9" r="5.3" fill="#E2E8F0"/><path d="M22 16 L17 35" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-a" d="M17 35 L7 56" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M17 35 L28 54" stroke="#E2E8F0" stroke-width="4.2" stroke-linecap="round"/><path class="limb-b" d="M22 19 L10 31" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/><path class="limb-a" d="M22 19 L34 29" stroke="#E2E8F0" stroke-width="3.7" stroke-linecap="round"/></g><g class="r-bob1" transform="translate(218,6)"><circle cx="25" cy="9" r="5.8" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.6"/><path d="M23 16 L17 36" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-b" d="M17 36 L6 58" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M17 36 L30 55" stroke="#FFFFFF" stroke-width="4.6" stroke-linecap="round"/><path class="limb-a" d="M23 19 L10 32" stroke="#ec6923" stroke-width="4" stroke-linecap="round"/><path class="limb-b" d="M23 19 L36 29" stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"/></g></svg></div><div><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
-    with col_right:
-        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
-        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        if st.button("Masuk Ruang Kerja", use_container_width=True):
-            if username == USER_VALID and password == PASS_VALID:
-                st.session_state.login_sukses = True
-                st.rerun()
-            else:
-                st.error("❌ Username atau Password salah!")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
-        <div class='login-brand-panel framer-panel'>
-            <h1>IMO2025 📑 dR</h1>
-            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p>
-            
-            <div class='peloton-stage'>
-                <svg viewBox="0 0 360 92" width="100%" height="84" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                        <!-- Gradasi Mewah untuk Jejak Jalur Larinya -->
-                        <linearGradient id="trackGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stop-color="rgba(236,105,35,0)" />
-                            <stop offset="45%" stop-color="#ec6923" />
-                            <stop offset="90%" stop-color="#3B378C" />
-                            <stop offset="100%" stop-color="rgba(255,255,255,0.4)" />
-                        </linearGradient>
-                        <filter id="glowOrange" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="2.5" result="blur" />
-                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                        <filter id="glowBlue" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="1.8" result="blur" />
-                            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-                        </filter>
-                    </defs>
-
-                    <!-- Garis Aliran Udara Terusan (Wind Speed) -->
-                    <line class="wind-line-1" x1="-10" y1="12" x2="370" y2="12" stroke="rgba(255,255,255,0.08)" stroke-width="1" />
-                    <line class="wind-line-2" x1="-10" y1="28" x2="370" y2="28" stroke="rgba(236,105,35,0.12)" stroke-width="1.5" />
-                    <line class="wind-line-3" x1="-10" y1="46" x2="370" y2="46" stroke="rgba(59,55,140,0.18)" stroke-width="1.2" />
-
-                    <!-- Partikel Debu Kecepatan Berseliweran -->
-                    <circle class="particle-1" cx="0" cy="18" r="1.5" fill="#ec6923" />
-                    <circle class="particle-2" cx="0" cy="36" r="2" fill="#FFFFFF" />
-                    <circle class="particle-3" cx="0" cy="50" r="1.2" fill="#3B378C" />
-
-                    <!-- Lintasan Neon Bawah -->
-                    <line class="track-slow" x1="10" y1="78" x2="350" y2="78" stroke="url(#trackGrad)" stroke-width="2.5" stroke-linecap="round" />
-                    <line class="track-fast" x1="20" y1="81" x2="340" y2="81" stroke="#FFFFFF" opacity="0.6" stroke-width="1" stroke-linecap="round" />
-
-                    <!-- Pelari 3 (Belakang - Siluet Biru Lembut) -->
-                    <g class="run-body-3" transform="translate(68, 11)" opacity="0.48" filter="url(#glowBlue)">
-                        <circle cx="26" cy="10" r="5.2" fill="#94A3B8" />
-                        <path class="run-limbs-3" d="M24 18 L16 35 L2 46 M16 35 L27 46 L18 59 M23 21 L35 28 L41 21 M21 21 L10 27 L2 33" stroke="#94A3B8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    </g>
-
-                    <!-- Pelari 2 (Tengah - Siluet Transparan Ringan) -->
-                    <g class="run-body-2" transform="translate(138, 8)" opacity="0.75">
-                        <circle cx="27" cy="10" r="5.6" fill="#CBD5E1" />
-                        <path class="run-limbs-2" d="M25 18 L17 36 L3 48 M17 36 L28 47 L21 61 M24 21 L36 28 L43 21 M22 21 L11 27 L3 34" stroke="#E2E8F0" stroke-width="4.3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                    </g>
-
-                    <!-- Pelari 1 (Paling Depan - Putih Mengkilap Dengan Glow Oranye) -->
-                    <g class="run-body-1" transform="translate(208, 5)" filter="url(#glowOrange)">
-                        <!-- Kepala -->
-                        <circle cx="29" cy="10" r="6" fill="#FFFFFF" stroke="#ec6923" stroke-width="1.8" />
-                        <!-- Badan, Tangan, dan Kaki (Bisa Mengayun Lewat Keyframes d:) -->
-                        <path class="run-limbs-1" d="M26 18 L18 37 L4 52 M18 37 L31 49 L26 64 M25 21 L38 28 L46 20 M23 21 L11 28 L3 36" stroke="#FFFFFF" stroke-width="4.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                        <!-- Detail Pinggul/Punggung Ekstra Kontras -->
-                        <path d="M25 21 L36 27" stroke="#ec6923" stroke-width="2.2" stroke-linecap="round" />
-                    </g>
-                </svg>
-            </div>
-
-            <div>
-                <span class='feature-pill'>📅 Auto-Tanggal PDF</span>
-                <span class='feature-pill'>🧹 Hapus Kotak Pink</span>
-                <span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span>
-                <span class='feature-pill'>📸 Watermark</span>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col_right:
-        st.write("")
-        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
-        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
-        st.write("")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
-        st.write("")
         if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
@@ -595,9 +331,7 @@ with main_area:
             baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="12 Februari 2025")
             baru_3 = st.text_input("Ubah Jenis 3 Menjadi (Opsional)", value="")
 
-        # Otomatis hitung nama hari Indonesia dari tanggal baru (misal 12 Februari 2025 -> Rabu, 12 Februari 2025)
         def buat_hari_tanggal_indo(teks_tgl, teks_iso=""):
-            import datetime
             hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
             bulan_map = {
                 "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
@@ -632,6 +366,7 @@ with main_area:
                 st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
                 st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', baru_1)}", "application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
+
     elif "Bersihkan" in st.session_state.menu_aktif:
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
         pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
