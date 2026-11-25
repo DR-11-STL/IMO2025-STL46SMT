@@ -294,28 +294,56 @@ main_area, right_panel = st.columns([2.7, 1.05], gap="medium")
 with main_area:
     if st.session_state.menu_aktif == "📅 Auto-Ubah Tanggal PDF & Foto":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (100% Otomatis)")
-        st.caption("Ukuran font, gaya Bold/Reguler, posisi teks, dan tanggal pada foto dokumentasi disesuaikan otomatis dengan dokumen asli.")
+        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (100% Sinkron Otomatis)")
+        st.caption("Tanggal dan nama hari di dalam foto dokumentasi otomatis mengikuti tanggal baru yang kamu masukkan di bawah.")
         pdf_tanggal = st.file_uploader("📥 Unggah File PDF Laporan Perawatan", type=["pdf"])
         c1, c2 = st.columns(2)
         with c1:
             lama_1 = st.text_input("Jenis 1 (Format ISO)", value="2026-09-20")
-            lama_2 = st.text_input("Jenis 2 (Format Header)", value="20 September 2026")
+            lama_2 = st.text_input("Jenis 2 (Format Header & Foto)", value="20 September 2026")
             lama_3 = st.text_input("Jenis 3 (Opsional)", value="")
         with c2:
-            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-01-03")
-            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="03 Januari 2025")
+            baru_1 = st.text_input("Ubah Jenis 1 Menjadi", value="2025-02-12")
+            baru_2 = st.text_input("Ubah Jenis 2 Menjadi", value="12 Februari 2025")
             baru_3 = st.text_input("Ubah Jenis 3 Menjadi (Opsional)", value="")
-        edit_foto_pdf = st.checkbox("✅ Otomatis ganti tanggal di dalam seluruh foto dokumentasi PDF", value=True)
-        teks_wm_baru = st.text_input("Hari & Tanggal Baru di Dalam Foto", value="Jumat, 03 Januari 2025")
-        if pdf_tanggal and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
-            with st.spinner("Mendeteksi jenis font asli & memperbarui seluruh halaman serta foto..."):
-                hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(pdf_tanggal, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)], edit_foto_pdf, teks_wm_baru)
-                st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Auto-Tanggal", "detail": f"{pdf_tanggal.name[:22]}... ({jml_teks} teks, {jml_gbr} foto)"})
-                st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui.")
-                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', '03-01-2025')}", "application/pdf", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
 
+        # Otomatis hitung nama hari Indonesia dari tanggal baru (misal 12 Februari 2025 -> Rabu, 12 Februari 2025)
+        def buat_hari_tanggal_indo(teks_tgl, teks_iso=""):
+            import datetime
+            hari_indo = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"]
+            bulan_map = {
+                "januari": 1, "februari": 2, "maret": 3, "april": 4, "mei": 5, "juni": 6,
+                "juli": 7, "agustus": 8, "september": 9, "oktober": 10, "november": 11, "desember": 12
+            }
+            try:
+                bagian = teks_tgl.strip().split()
+                if len(bagian) == 3 and bagian[1].lower() in bulan_map:
+                    dt = datetime.date(int(bagian[2]), bulan_map[bagian[1].lower()], int(bagian[0]))
+                    return f"{hari_indo[dt.weekday()]}, {teks_tgl.strip()}"
+            except Exception:
+                pass
+            try:
+                if len(teks_iso.strip().split("-")) == 3:
+                    y, m, d = map(int, teks_iso.strip().split("-"))
+                    dt = datetime.date(y, m, d)
+                    return f"{hari_indo[dt.weekday()]}, {teks_tgl.strip()}"
+            except Exception:
+                pass
+            return teks_tgl.strip()
+
+        otomatis_wm = buat_hari_tanggal_indo(baru_2, baru_1)
+        edit_foto_pdf = st.checkbox(f"✅ Otomatis ubah tanggal di dalam seluruh foto menjadi: **{otomatis_wm}**", value=True)
+
+        if pdf_tanggal and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
+            with st.spinner("Mendeteksi jenis font asli & menyinkronkan seluruh halaman serta foto..."):
+                hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(
+                    pdf_tanggal, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)],
+                    edit_foto_pdf, otomatis_wm
+                )
+                st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Auto-Tanggal", "detail": f"{pdf_tanggal.name[:22]}... ({jml_teks} teks, {jml_gbr} foto)"})
+                st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
+                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, f"Revisi_{pdf_tanggal.name.replace('20-09-2026', baru_1)}", "application/pdf", use_container_width=True)
+        st.markdown("</div>", unsafe_allow_html=True)
     elif "Bersihkan" in st.session_state.menu_aktif:
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
         pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
