@@ -47,8 +47,8 @@ KAI_BLUE = "#282562"
 KAI_BLUE_LIGHT = "#3B378C"
 KAI_ORANGE = "#ec6923"
 
-# --- CUSTOM CSS: TEMA BENTO GRID KAI MODERN (LIGHT & DARK) ---
-st.markdown(f"""
+# --- CUSTOM CSS: TEMA BENTO GRID KAI MODERN ---
+css_tema = f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
@@ -69,7 +69,6 @@ section[data-testid="stSidebar"] {{
     color: {TEXT_PRIMARY} !important;
 }}
 
-/* Judul Utama dengan Biru KAI + Garis Tepi Putih */
 .title-kai {{
     font-size: 2.3rem;
     font-weight: 900;
@@ -80,7 +79,6 @@ section[data-testid="stSidebar"] {{
     text-shadow: 2px 2px 6px rgba(0, 0, 0, 0.7);
 }}
 
-/* Split-Screen Login Left Panel */
 .login-brand-panel {{
     background: linear-gradient(145deg, {KAI_BLUE} 0%, #17153B 65%, {KAI_ORANGE} 140%);
     border-radius: 20px;
@@ -116,7 +114,6 @@ section[data-testid="stSidebar"] {{
     margin-top: 10px;
 }}
 
-/* Bento Cards */
 .bento-card {{
     background-color: {BG_CARD};
     border: 1px solid {BORDER_CARD};
@@ -126,60 +123,4 @@ section[data-testid="stSidebar"] {{
     margin-bottom: 16px;
 }}
 .bento-hero {{
-    background: linear-gradient(135deg, {KAI_BLUE} 0%, {KAI_BLUE_LIGHT} 60%, {KAI_ORANGE} 135%);
-    border-radius: 16px;
-    padding: 20px 22px;
-    color: #FFFFFF !important;
-    box-shadow: 0 10px 25px rgba(40, 37, 98, 0.35);
-    margin-bottom: 16px;
-}}
-.bento-hero * {{
-    color: #FFFFFF !important;
-}}
-.kpi-title {{
-    font-size: 0.78rem;
-    font-weight: 600;
-    color: {TEXT_SECONDARY} !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-.kpi-value {{
-    font-size: 1.95rem;
-    font-weight: 800;
-    color: {TEXT_PRIMARY} !important;
-    margin: 4px 0;
-}}
-.kpi-badge-orange {{
-    background-color: rgba(236, 105, 35, 0.18);
-    color: {KAI_ORANGE} !important;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.74rem;
-    font-weight: 700;
-}}
-
-/* AI Assistant Orb */
-.ai-orb-box {{
-    background-color: {BG_CARD};
-    border: 1px solid {BORDER_CARD};
-    border-radius: 16px;
-    padding: 20px;
-    text-align: center;
-}}
-.ai-orb {{
-    width: 80px;
-    height: 80px;
-    margin: 10px auto 14px auto;
-    border-radius: 50%;
-    background: radial-gradient(circle at 30% 30%, {KAI_ORANGE}, {KAI_BLUE} 70%, #090D16 100%);
-    box-shadow: 0 0 28px rgba(236, 105, 35, 0.55), inset 0 0 15px rgba(255,255,255,0.35);
-    animation: pulseOrb 3s infinite ease-in-out;
-}}
-@keyframes pulseOrb {{
-    0% {{ transform: scale(0.96); box-shadow: 0 0 20px rgba(236, 105, 35, 0.45); }}
-    50% {{ transform: scale(1.04); box-shadow: 0 0 36px rgba(40, 37, 98, 0.85); }}
-    100% {{ transform: scale(0.96); box-shadow: 0 0 20px rgba(236, 105, 35, 0.45); }}
-}}
-
-/* Kustomisasi Tombol Utama */
-.
+    background: linear
