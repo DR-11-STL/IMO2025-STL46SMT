@@ -287,8 +287,8 @@ with st.sidebar:
     st.divider()
     st.session_state.menu_aktif = st.radio("Mode Aplikasi", [
         "📅 Auto-Ubah Tanggal PDF & Foto",
-        "🧹 Hanya Bersihkan Kotak Pink Anotasi",
-        "🚀 Jahit Foto Progres",
+        "🧹 Bersihkan Kotak Pink Anotasi",
+        "🚀 Jahit Foto Progres 0-50-100%",
         "📸 Generator Foto Kegiatan Watermark"
     ], label_visibility="collapsed")
     st.divider()
