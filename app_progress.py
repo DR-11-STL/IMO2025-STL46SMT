@@ -34,8 +34,12 @@ else:
 
 css_tema = f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
-#MainMenu, footer {{visibility: hidden;}}
+#MainMenu, footer, [data-testid="stToolbar"], [data-testid="stDecoration"], .stAppDeployButton {{
+    display: none !important;
+    visibility: hidden !important;
+}}
 header[data-testid="stHeader"] {{background: transparent !important;}}
+[data-testid="collapsedControl"] {{visibility: visible !important; display: flex !important;}}
 html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !important;}}
 .stApp {{background-color: {BG_APP}; color: {TEXT_PRIMARY};}}
 section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD};}}
