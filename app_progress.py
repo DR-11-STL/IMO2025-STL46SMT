@@ -242,10 +242,10 @@ if not st.session_state.login_sukses:
     st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital .</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>RUANG KERJA DIGITAL .</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
+        st.markdown("### MASUK RUANG KERJA 👋")
         username = st.text_input("Username")
         password = st.text_input("Password", type="password")
         if st.button("Masuk Ruang Kerja", use_container_width=True):
