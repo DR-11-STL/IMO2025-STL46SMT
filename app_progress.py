@@ -1,6 +1,6 @@
 import streamlit as st
 import fitz  # PyMuPDF
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance
+from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps
 import io
 import zipfile
 import urllib.request
@@ -11,14 +11,12 @@ import datetime
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
-st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide")
+st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide", initial_sidebar_state="expanded")
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
 if "dark_mode" not in st.session_state:
     st.session_state.dark_mode = True
-if "menu_aktif" not in st.session_state:
-    st.session_state.menu_aktif = "📅 Auto-Ubah Tanggal PDF & Foto"
 if "riwayat_proses" not in st.session_state:
     st.session_state.riwayat_proses = [
         {"waktu": "Hari ini", "modul": "Sistem Siap", "detail": "Menunggu dokumen checklist"}
@@ -36,7 +34,8 @@ else:
 
 css_tema = f"""<style>
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
-#MainMenu, header, footer {{visibility: hidden;}}
+#MainMenu, footer {{visibility: hidden;}}
+header[data-testid="stHeader"] {{background: transparent !important;}}
 html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !important;}}
 .stApp {{background-color: {BG_APP}; color: {TEXT_PRIMARY};}}
 section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD};}}
@@ -64,10 +63,15 @@ hr {{border-top: 1px solid {BORDER_CARD} !important;}}
 st.markdown(css_tema, unsafe_allow_html=True)
 
 def crop_center_square(image):
-    max_dim = max(image.size)
-    return image.resize((max_dim, max_dim))
+    img = ImageOps.exif_transpose(image).convert("RGB")
+    w, h = img.size
+    sisi = min(w, h)
+    kiri = (w - sisi) // 2
+    atas = (h - sisi) // 2
+    return img.crop((kiri, atas, kiri + sisi, atas + sisi)).resize((600, 600), Image.Resampling.LANCZOS)
 
 def proses_dokumen(pdf_file, data_rangkaian):
+    pdf_file.seek(0)
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     for halaman in doc:
         while True:
@@ -83,7 +87,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
 
     if len(data_rangkaian) > 0:
         lebar_halaman, tinggi_halaman = 595, 842
-        lebar_gambar, tinggi_gambar, spasi = 150, 150, 30
+        lebar_gambar, tinggi_gambar, spasi = 155, 155, 25
         mulai_x = (lebar_halaman - (3 * lebar_gambar + 2 * spasi)) / 2
         y_pos, items_per_page = 60, 0
         halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
@@ -92,21 +96,22 @@ def proses_dokumen(pdf_file, data_rangkaian):
             if items_per_page >= 3:
                 halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
                 y_pos, items_per_page = 60, 0
-            halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"Nama Aset: {data['nama_aset']}", fontsize=14, color=(0, 0, 0))
+            halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"{data['nama_aset']}", fontsize=13, fontname="hebo", color=(0, 0, 0))
             koleksi = [
                 {"file": data["img_0"], "label": "Foto 0%"},
                 {"file": data["img_50"], "label": "Foto 50%"},
                 {"file": data["img_100"], "label": "Foto 100%"}
             ]
             for i, item in enumerate(koleksi):
+                item["file"].seek(0)
                 img_square = crop_center_square(Image.open(item["file"]))
                 img_byte_arr = io.BytesIO()
-                img_square.save(img_byte_arr, format='JPEG')
+                img_square.save(img_byte_arr, format='JPEG', quality=90)
                 x0 = mulai_x + i * (lebar_gambar + spasi)
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
-                halaman_baru.insert_text(fitz.Point(x0 + 60, y0 + tinggi_gambar + 20), item["label"], fontsize=14, color=(0, 0, 0))
-            y_pos += 210
+                halaman_baru.insert_text(fitz.Point(x0 + 52, y0 + tinggi_gambar + 18), item["label"], fontsize=11, fontname="helv", color=(0, 0, 0))
+            y_pos += 225
             items_per_page += 1
 
     output_pdf = io.BytesIO()
@@ -118,30 +123,16 @@ def deteksi_tanggal_otomatis_pdf(pdf_bytes):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     gabungan_teks = "\n".join(hal.get_text("text") for hal in doc)
     doc.close()
-
-    tgl_iso_ditemukan = ""
-    tgl_indo_ditemukan = ""
-
-    cari_iso = re.findall(r"\b(20\d{2}-\d{2}-\d{2})\b", gabungan_teks)
-    if cari_iso:
-        tgl_iso_ditemukan = cari_iso[0]
-
+    tgl_iso = re.findall(r"\b(20\d{2}-\d{2}-\d{2})\b", gabungan_teks)
     bulan_regex = r"(?:Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)"
-    cari_indo = re.findall(rf"\b(\d{{1,2}}\s+{bulan_regex}\s+20\d{{2}})\b", gabungan_teks, flags=re.IGNORECASE)
-    if cari_indo:
-        tgl_indo_ditemukan = cari_indo[0]
-
-    return tgl_iso_ditemukan, tgl_indo_ditemukan
+    tgl_indo = re.findall(rf"\b(\d{{1,2}}\s+{bulan_regex}\s+20\d{{2}})\b", gabungan_teks, flags=re.IGNORECASE)
+    return (tgl_iso[0] if tgl_iso else ""), (tgl_indo[0] if tgl_indo else "")
 
 def baca_metadata_foto_asli(img_rgba):
-    """Membaca jam asli (baris 1) dan koordinat + alamat asli (baris 2-5) dari masing-masing foto."""
     w, h = img_rgba.size
     bx0, by0 = 0, int(h * 0.715)
     bx1, by1 = int(w * 0.90), int(h * 0.990)
-
-    jam_hasil = None
-    koord_hasil = None
-    alamat_hasil = None
+    jam_hasil, koord_hasil, alamat_hasil = None, None, None
 
     def bersihkan_baris_asli(teks):
         t = re.sub(r"[^A-Za-z0-9,\s]", "", teks)
@@ -154,29 +145,23 @@ def baca_metadata_foto_asli(img_rgba):
 
     try:
         import pytesseract
-
         crop_dasar = img_rgba.crop((bx0, by0, bx1, by1)).convert("L")
         crop_besar = crop_dasar.resize((crop_dasar.width * 3, crop_dasar.height * 3), Image.Resampling.LANCZOS)
-
         kandidat_gambar = [
             ImageEnhance.Contrast(crop_besar).enhance(2.2),
             crop_besar.point(lambda p: 255 if p > 185 else 0),
             crop_besar.point(lambda p: 255 if p > 155 else 0),
         ]
-
         for gbr_uji in kandidat_gambar:
             teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
-
             if not jam_hasil:
                 cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
                 if cari_jam:
                     jam_hasil = cari_jam[0]
-
             if not koord_hasil:
                 cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
                 if cari_koord:
                     koord_hasil = cari_koord[0].replace(" ", "")
-
             if not alamat_hasil:
                 semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
                 idx_mulai = -1
@@ -187,7 +172,6 @@ def baca_metadata_foto_asli(img_rgba):
                     elif any(k in b.lower() for k in ["kecamatan", "kota ", "kabupaten"]):
                         idx_mulai = i
                         break
-
                 if idx_mulai != -1 and len(semua_baris) > idx_mulai:
                     kandidat_baris = []
                     for raw_b in semua_baris[idx_mulai : idx_mulai + 3]:
@@ -198,47 +182,34 @@ def baca_metadata_foto_asli(img_rgba):
                             clean_b = "Jawa Tengah"
                         if len(clean_b) >= 4:
                             kandidat_baris.append(clean_b)
-
                     if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
                         if len(kandidat_baris) == 1:
                             kandidat_baris.extend(["Jawa Tengah", "Indonesia"])
                         elif len(kandidat_baris) == 2 and "indonesia" not in kandidat_baris[1].lower():
                             kandidat_baris.append("Indonesia")
                         alamat_hasil = kandidat_baris
-
             if jam_hasil and koord_hasil and alamat_hasil:
                 break
     except Exception:
         pass
-
     return jam_hasil, koord_hasil, alamat_hasil
 
 def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     img = img_pil.convert("RGBA")
     w, h = img.size
-
     bx0, by0 = 0, int(h * 0.720)
     bx1, by1 = int(w * 0.885), int(h * 0.985)
     box_w, box_h = bx1 - bx0, by1 - by0
 
     jam_asli, koordinat_asli, baris_alamat = baca_metadata_foto_asli(img)
-
     if fallback_meta:
-        if not jam_asli and fallback_meta.get("jam"):
-            jam_asli = fallback_meta["jam"]
-        if not koordinat_asli and fallback_meta.get("koord"):
-            koordinat_asli = fallback_meta["koord"]
-        if not baris_alamat and fallback_meta.get("alamat"):
-            baris_alamat = fallback_meta["alamat"]
+        jam_asli = jam_asli or fallback_meta.get("jam")
+        koordinat_asli = koordinat_asli or fallback_meta.get("koord")
+        baris_alamat = baris_alamat or fallback_meta.get("alamat")
 
     jam_asli = jam_asli or "09:20"
     koordinat_asli = koordinat_asli or "-6.9817887,110.4731881"
-    baris_alamat = baris_alamat or [
-        "Kecamatan Genuk, Kota Semarang",
-        "Jawa Tengah",
-        "Indonesia"
-    ]
-
+    baris_alamat = baris_alamat or ["Kecamatan Genuk, Kota Semarang", "Jawa Tengah", "Indonesia"]
     meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
 
     strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
@@ -261,11 +232,7 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     except Exception:
         font = ImageFont.load_default()
 
-    baris_teks = [
-        f"{teks_hari_tanggal_baru} {jam_asli}",
-        koordinat_asli
-    ] + baris_alamat
-
+    baris_teks = [f"{teks_hari_tanggal_baru} {jam_asli}", koordinat_asli] + baris_alamat
     margin_kiri = int(w * 0.016)
     y_teks = by0 + int(box_h * 0.05)
     spasi_baris = int(ukuran_font * 1.32)
@@ -320,13 +287,11 @@ def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_wat
                 w_img, h_img = base_image["width"], base_image["height"]
                 if w_img < 180 or h_img < 180:
                     continue
-
                 pil_cek = Image.open(io.BytesIO(base_image["image"])).convert("RGB")
                 p_kiri_atas = pil_cek.getpixel((5, 5))
                 p_kanan_atas = pil_cek.getpixel((w_img - 6, 5))
                 if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
                     continue
-
                 img_hasil, meta_terakhir = patch_watermark_gambar(pil_cek, teks_watermark_baru, meta_terakhir)
                 buf = io.BytesIO()
                 img_hasil.save(buf, format="JPEG", quality=88)
@@ -345,10 +310,10 @@ if not st.session_state.login_sukses:
     st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p></p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### MASUK RUANG KERJA 👋")
+        st.markdown("### Masuk Ruang Kerja 👋")
         st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
         st.write("")
         username = st.text_input("Username")
@@ -367,7 +332,7 @@ with st.sidebar:
     st.markdown("<p class='title-kai'>IMO2025 📑 dR</p>", unsafe_allow_html=True)
     st.caption("Automation Workspace Suite")
     st.divider()
-    st.session_state.menu_aktif = st.radio("Mode Aplikasi", [
+    pilihan_menu = st.radio("Mode Aplikasi", [
         "📅 Auto-Ubah Tanggal PDF & Foto",
         "🧹 Bersihkan Kotak Pink Anotasi",
         "🚀 Foto Progres 0-50-100%",
@@ -398,7 +363,7 @@ with kpi4:
 main_area, right_panel = st.columns([2.7, 1.05], gap="medium")
 
 with main_area:
-    if st.session_state.menu_aktif == "📅 Auto-Ubah Tanggal PDF & Foto":
+    if pilihan_menu == "📅 Auto-Ubah Tanggal PDF & Foto":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
         st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (Deteksi Otomatis)")
         st.caption("Tanggal asli di dalam PDF otomatis terbaca saat file diunggah, dan seluruh teks serta foto akan sinkron ke tanggal baru.")
@@ -463,57 +428,74 @@ with main_area:
                 st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, nama_file_out, "application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    elif "Bersihkan" in st.session_state.menu_aktif:
+    elif pilihan_menu == "🧹 Bersihkan Kotak Pink Anotasi":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True)
-        data_siap_proses = []
-        if "Jahit" in st.session_state.menu_aktif:
-            st.subheader("📸 Form Rangkaian Foto Progres")
-            for i in range(1, 6):
-                with st.expander(f"📌 Rangkaian Aset ke-{i}", expanded=(i == 1)):
-                    nama_aset = st.text_input(f"Nama Aset {i}", key=f"nama_{i}", placeholder="Contoh: Peraga Sinyal")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
-                        if img_0: st.image(img_0, use_container_width=True, caption="FOTO 0%")
-                    with col2:
-                        img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
-                        if img_50: st.image(img_50, use_container_width=True, caption="FOTO 50%")
-                    with col3:
-                        img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
-                        if img_100: st.image(img_100, use_container_width=True, caption="FOTO 100%")
-                    if nama_aset and img_0 and img_50 and img_100:
-                        data_siap_proses.append({"nama_aset": nama_aset, "img_0": img_0, "img_50": img_50, "img_100": img_100})
-        if pdf_inputs:
-            if "Hanya" in st.session_state.menu_aktif and st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
-                if len(pdf_inputs) == 1:
-                    pdf_file = pdf_inputs[0]
-                    hasil_pdf_bytes = proses_dokumen(pdf_file, [])
-                    nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                    st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Clean Anotasi", "detail": pdf_file.name[:26]})
-                    st.success("✨ Selesai! Kotak pink berhasil dihapus.")
-                    st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
-                else:
-                    zip_buffer = io.BytesIO()
-                    with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                        for pdf_file in pdf_inputs:
-                            nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                            zip_file.writestr(nama_unduh, proses_dokumen(pdf_file, []))
-                    st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Batch ZIP", "detail": f"{len(pdf_inputs)} file PDF"})
-                    st.success(f"✨ Selesai! {len(pdf_inputs)} file dibersihkan.")
-                    st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Bersih.zip", mime="application/zip", use_container_width=True)
-            elif "Jahit" in st.session_state.menu_aktif and len(data_siap_proses) > 0 and st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
+        st.markdown("#### 🧹 Bersihkan Kotak Pink Anotasi")
+        st.caption("Unggah satu atau banyak file PDF checklist sekaligus untuk menghapus anotasi kotak pink.")
+        pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True, key="up_clean")
+        if pdf_inputs and st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
+            if len(pdf_inputs) == 1:
                 pdf_file = pdf_inputs[0]
-                hasil_pdf_bytes = proses_dokumen(pdf_file, data_siap_proses)
+                hasil_pdf_bytes = proses_dokumen(pdf_file, [])
                 nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Jahit Foto", "detail": f"{len(data_siap_proses)} aset dijahit"})
-                st.success("🏆 Dokumen Selesai Dijahit!")
-                st.download_button("⬇️ Unduh File Final: " + nama_unduh, data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
+                st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Clean Anotasi", "detail": pdf_file.name[:26]})
+                st.success("✨ Selesai! Kotak pink berhasil dihapus.")
+                st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
+            else:
+                zip_buffer = io.BytesIO()
+                with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
+                    for pdf_file in pdf_inputs:
+                        nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
+                        zip_file.writestr(nama_unduh, proses_dokumen(pdf_file, []))
+                st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Batch ZIP", "detail": f"{len(pdf_inputs)} file PDF"})
+                st.success(f"✨ Selesai! {len(pdf_inputs)} file dibersihkan.")
+                st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Bersih.zip", mime="application/zip", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    elif "Watermark" in st.session_state.menu_aktif:
+    elif pilihan_menu == "🚀 Foto Progres 0-50-100%":
         st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.subheader("📸 Foto Watermark")
+        st.markdown("#### 🚀 Bersihkan Anotasi & Jahit Foto Progres (0% - 50% - 100%)")
+        st.caption("Unggah PDF checklist dasar, lalu isi hingga 5 judul aset beserta 3 foto progres (0%, 50%, 100%) di masing-masing aset.")
+        pdf_jahit = st.file_uploader("📥 Unggah File PDF Checklist Dasar", type=["pdf"], key="up_jahit_single")
+
+        st.subheader("📸 Form Rangkaian Foto Progres (5 Aset × 3 Kolom)")
+        data_siap_proses = []
+        for i in range(1, 6):
+            with st.expander(f"📌 Rangkaian Aset ke-{i}", expanded=(i == 1)):
+                nama_aset = st.text_input(f"Nama Aset {i}", key=f"nama_{i}", placeholder="Contoh: Peraga Sinyal / Penggerak Wesel")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    img_0 = st.file_uploader("Foto 0%", key=f"img0_{i}", type=["jpg", "jpeg", "png"])
+                    if img_0:
+                        st.image(img_0, use_container_width=True, caption="FOTO 0%")
+                with col2:
+                    img_50 = st.file_uploader("Foto 50%", key=f"img50_{i}", type=["jpg", "jpeg", "png"])
+                    if img_50:
+                        st.image(img_50, use_container_width=True, caption="FOTO 50%")
+                with col3:
+                    img_100 = st.file_uploader("Foto 100%", key=f"img100_{i}", type=["jpg", "jpeg", "png"])
+                    if img_100:
+                        st.image(img_100, use_container_width=True, caption="FOTO 100%")
+                if nama_aset and img_0 and img_50 and img_100:
+                    data_siap_proses.append({"nama_aset": nama_aset, "img_0": img_0, "img_50": img_50, "img_100": img_100})
+
+        st.write("")
+        if pdf_jahit is not None:
+            if len(data_siap_proses) > 0:
+                if st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
+                    with st.spinner("Membersihkan kotak pink & menjahit foto progres..."):
+                        hasil_pdf_bytes = proses_dokumen(pdf_jahit, data_siap_proses)
+                        nama_unduh = pdf_jahit.name[:-4] + " revisi.pdf" if pdf_jahit.name.lower().endswith(".pdf") else pdf_jahit.name + " revisi.pdf"
+                        st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Jahit Foto", "detail": f"{len(data_siap_proses)} aset dijahit"})
+                        st.success("🏆 Dokumen Selesai Dijahit!")
+                        st.download_button("⬇️ Unduh File Final: " + nama_unduh, data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
+            else:
+                st.info("ℹ️ Isi Nama Aset serta Foto 0%, 50%, dan 100% minimal pada 1 rangkaian untuk memunculkan tombol jahit.")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    elif pilihan_menu == "📸 Generator Foto Watermark":
+        st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
+        st.subheader("📸 Generator Foto Kegiatan Watermark")
         uploaded_image = st.file_uploader("Pilih foto kegiatan yang masih polos...", type=['jpg', 'jpeg', 'png'])
         if uploaded_image is not None:
             col1, col2 = st.columns(2)
@@ -524,7 +506,7 @@ with main_area:
                 kegiatan = st.text_input("Kegiatan", "Perawatan Penggerak Wesel Elektrik W45B SMT")
                 lokasi = st.text_area("Lokasi", "Kecamatan Semarang Utara, Kota Semarang\nJawa Tengah\nIndonesia")
             if st.button("Jahit Watermark ke Foto", use_container_width=True):
-                image_wm = Image.open(uploaded_image)
+                image_wm = ImageOps.exif_transpose(Image.open(uploaded_image)).convert("RGB")
                 draw = ImageDraw.Draw(image_wm)
                 ukuran_font = max(20, int(min(image_wm.width, image_wm.height) * 0.028))
                 batas_karakter = int((image_wm.width * 0.80) / (ukuran_font * 0.55))
@@ -550,7 +532,7 @@ with main_area:
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Watermark Foto", "detail": kegiatan[:26]})
                 st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
                 buf_img = io.BytesIO()
-                image_wm.save(buf_img, format="JPEG")
+                image_wm.save(buf_img, format="JPEG", quality=92)
                 st.download_button("⬇️ Unduh Foto", data=buf_img.getvalue(), file_name="Foto_Watermark.jpg", mime="image/jpeg", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
