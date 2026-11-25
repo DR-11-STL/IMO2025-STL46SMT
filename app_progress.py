@@ -133,80 +133,160 @@ def deteksi_tanggal_otomatis_pdf(pdf_bytes):
 
     return tgl_iso_ditemukan, tgl_indo_ditemukan
 
-def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru):
-    img = img_pil.convert("RGBA")
-    w, h = img.size
+def baca_metadata_foto_asli(img_rgba):
+    """Membaca jam asli (baris 1) dan koordinat + alamat asli (baris 2-5) dari masing-masing foto."""
+    w, h = img_rgba.size
+    bx0, by0 = 0, int(h * 0.715)
+    bx1, by1 = int(w * 0.90), int(h * 0.990)
 
-    # Koordinat kotak watermark penuh (untuk membaca jam asli di baris 1)
-    bx0, by0 = 0, int(h * 0.720)
-    bx1, by1 = int(w * 0.885), int(h * 0.985)
-    box_h = by1 - by0
+    jam_hasil = None
+    koord_hasil = None
+    alamat_hasil = None
 
-    # HANYA targetkan pita baris ke-1 (Hari, Tanggal & Jam) -> tinggi ~22% dari kotak watermark
-    # Baris 2 (Koordinat), Baris 3 (Kecamatan Genuk/dll), Baris 4 & 5 dibiarkan 100% ORI!
-    r1_x0 = 0
-    r1_y0 = by0
-    r1_x1 = int(w * 0.885)
-    r1_y1 = by0 + int(box_h * 0.235)
-    r1_w = r1_x1 - r1_x0
-    r1_h = max(12, r1_y1 - r1_y0)
+    def bersihkan_baris_asli(teks):
+        t = re.sub(r"[^A-Za-z0-9,\s]", "", teks)
+        t = re.sub(r"^([A-Za-z0-9]{1,2}\s+)+", "", t.strip())
+        t = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", t.strip())
+        t = re.sub(r"\s+", " ", t).strip(" ,")
+        t = re.sub(r"Kota Semaran\b", "Kota Semarang", t, flags=re.IGNORECASE)
+        t = re.sub(r"Kecamalan", "Kecamatan", t, flags=re.IGNORECASE)
+        return t
 
-    jam_asli = "09:00"
     try:
         import pytesseract
-        # Baca khusus pita baris ke-1 saja agar pembacaan jam (HH:MM) jauh lebih tajam
-        crop_baris1 = img.crop((r1_x0, max(0, r1_y0 - 4), r1_x1, r1_y1 + 6)).convert("L")
-        crop_baris1 = crop_baris1.resize((crop_baris1.width * 3, crop_baris1.height * 3), Image.Resampling.LANCZOS)
-        teks_b1 = pytesseract.image_to_string(crop_baris1, config="--psm 7")
-        cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_b1)
-        if not cari_jam:
-            # Cadangan baca seluruh kotak watermark jika baris 1 terlalu mepet
-            crop_all = img.crop((bx0, by0, bx1, by1)).convert("L")
-            crop_all = crop_all.resize((crop_all.width * 2, crop_all.height * 2), Image.Resampling.LANCZOS)
-            teks_all = pytesseract.image_to_string(crop_all, config="--psm 6")
-            cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_all)
-        if cari_jam:
-            jam_asli = cari_jam[0]
+        from PIL import ImageEnhance
+
+        crop_dasar = img_rgba.crop((bx0, by0, bx1, by1)).convert("L")
+        crop_besar = crop_dasar.resize((crop_dasar.width * 3, crop_dasar.height * 3), Image.Resampling.LANCZOS)
+
+        kandidat_gambar = [
+            ImageEnhance.Contrast(crop_besar).enhance(2.2),
+            crop_besar.point(lambda p: 255 if p > 185 else 0),
+            crop_besar.point(lambda p: 255 if p > 155 else 0),
+        ]
+
+        for gbr_uji in kandidat_gambar:
+            teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
+
+            # 1. Baca jam asli dari baris ke-1 (HH:MM)
+            if not jam_hasil:
+                cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
+                if cari_jam:
+                    jam_hasil = cari_jam[0]
+
+            # 2. Baca koordinat asli dari baris ke-2
+            if not koord_hasil:
+                cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
+                if cari_koord:
+                    koord_hasil = cari_koord[0].replace(" ", "")
+
+            # 3. Baca baris 3-5 (Kecamatan/Kota, Provinsi, Negara) asli dari foto ini
+            if not alamat_hasil:
+                semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
+                idx_mulai = -1
+                for i, b in enumerate(semua_baris):
+                    if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
+                        idx_mulai = i + 1
+                        break
+                    elif any(k in b.lower() for k in ["kecamatan", "kota ", "kabupaten"]):
+                        idx_mulai = i
+                        break
+
+                if idx_mulai != -1 and len(semua_baris) > idx_mulai:
+                    kandidat_baris = []
+                    for raw_b in semua_baris[idx_mulai : idx_mulai + 3]:
+                        clean_b = bersihkan_baris_asli(raw_b)
+                        if "indonesia" in clean_b.lower():
+                            clean_b = "Indonesia"
+                        elif "jawa tengah" in clean_b.lower():
+                            clean_b = "Jawa Tengah"
+                        if len(clean_b) >= 4:
+                            kandidat_baris.append(clean_b)
+
+                    if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
+                        if len(kandidat_baris) == 1:
+                            kandidat_baris.extend(["Jawa Tengah", "Indonesia"])
+                        elif len(kandidat_baris) == 2 and "indonesia" not in kandidat_baris[1].lower():
+                            kandidat_baris.append("Indonesia")
+                        alamat_hasil = kandidat_baris
+
+            if jam_hasil and koord_hasil and alamat_hasil:
+                break
     except Exception:
         pass
 
-    # 1. Rekonstruksi background alami HANYA di pita baris ke-1 (mengambil tekstur tepat di atas baris 1 & kanan)
-    strip_atas = img.crop((r1_x0, max(0, r1_y0 - 6), r1_x1, max(1, r1_y0 - 1))).resize((r1_w, r1_h), Image.Resampling.BICUBIC)
-    strip_kanan = img.crop((min(w - 6, r1_x1 + 1), r1_y0, min(w, r1_x1 + 6), r1_y1)).resize((r1_w, r1_h), Image.Resampling.BICUBIC)
+    return jam_hasil, koord_hasil, alamat_hasil
 
-    tambalan_b1 = Image.blend(strip_atas, strip_kanan, alpha=0.5)
-    tambalan_b1 = tambalan_b1.filter(ImageFilter.GaussianBlur(radius=max(2, int(r1_h * 0.12))))
 
-    mask = Image.new("L", (r1_w, r1_h), 255)
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=2))
-    img.paste(tambalan_b1, (r1_x0, r1_y0), mask)
+def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
+    img = img_pil.convert("RGBA")
+    w, h = img.size
 
-    # 2. Samakan warna shading gelap pita baris 1 dengan shading kotak Timemark asli di bawahnya
-    sample_shade = img.crop((int(w * 0.55), r1_y1 + 2, int(w * 0.80), min(h, r1_y1 + 8))).convert("RGB")
-    pixels = list(sample_shade.getdata())
-    avg_brightness = sum(sum(p) / 3 for p in pixels) / max(1, len(pixels))
-    alpha_shade = 148 if avg_brightness > 75 else 115
+    # Dimensi kotak Timemark persis seperti tampilan acuan yang kamu suka
+    bx0, by0 = 0, int(h * 0.720)
+    bx1, by1 = int(w * 0.885), int(h * 0.985)
+    box_w, box_h = bx1 - bx0, by1 - by0
 
+    jam_asli, koordinat_asli, baris_alamat = baca_metadata_foto_asli(img)
+
+    # Jika sebagian baris tertutup pantulan cahaya, salin dari foto aset sebelumnya agar tidak pernah salah kecamatan
+    if fallback_meta:
+        if not jam_asli and fallback_meta.get("jam"):
+            jam_asli = fallback_meta["jam"]
+        if not koordinat_asli and fallback_meta.get("koord"):
+            koordinat_asli = fallback_meta["koord"]
+        if not baris_alamat and fallback_meta.get("alamat"):
+            baris_alamat = fallback_meta["alamat"]
+
+    jam_asli = jam_asli or "09:20"
+    koordinat_asli = koordinat_asli or "-6.9817887,110.4731881"
+    baris_alamat = baris_alamat or [
+        "Kecamatan Genuk, Kota Semarang",
+        "Jawa Tengah",
+        "Indonesia"
+    ]
+
+    meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
+
+    # Bersihkan tulisan lama secara halus dengan tekstur sekitar
+    strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
+    strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
+    tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5).filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
+
+    mask = Image.new("L", (box_w, box_h), 255)
+    pad = max(4, int(box_h * 0.05))
+    ImageDraw.Draw(mask).rectangle([pad, pad, box_w - pad, box_h - pad], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
+    img.paste(tambalan_alami, (bx0, by0), mask)
+
+    # Kotak shading gelap transparan yang rapi dan seragam
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle([r1_x0, r1_y0, r1_x1, r1_y1], fill=(10, 10, 10, alpha_shade))
+    draw.rectangle([bx0, by0, bx1, by1], fill=(8, 8, 8, 162))
 
-    # 3. Cetak HANYA baris ke-1 (Hari, Tanggal Baru + Jam Asli) dengan font putih tegas
-    ukuran_font = max(11, int(w * 0.0345))
+    ukuran_font = max(11, int(w * 0.034))
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
     except Exception:
         font = ImageFont.load_default()
 
-    teks_baris_1 = f"{teks_hari_tanggal_baru} {jam_asli}"
+    # Baris 1: Hari & Tanggal baru + Jam asli foto | Baris 2-5: Koordinat & Lokasi asli foto ditulis ulang rapi
+    baris_teks = [
+        f"{teks_hari_tanggal_baru} {jam_asli}",
+        koordinat_asli
+    ] + baris_alamat
+
     margin_kiri = int(w * 0.016)
-    y_teks = r1_y0 + max(1, int((r1_h - ukuran_font) * 0.42))
+    y_teks = by0 + int(box_h * 0.05)
+    spasi_baris = int(ukuran_font * 1.32)
 
-    for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)]:
-        draw.text((margin_kiri + ox, y_teks + oy), teks_baris_1, font=font, fill=(0, 0, 0, 210))
-    draw.text((margin_kiri, y_teks), teks_baris_1, font=font, fill=(255, 255, 255, 255))
+    for baris in baris_teks:
+        for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)]:
+            draw.text((margin_kiri + ox, y_teks + oy), baris, font=font, fill=(0, 0, 0, 210))
+        draw.text((margin_kiri, y_teks), baris, font=font, fill=(255, 255, 255, 255))
+        y_teks += spasi_baris
 
-    return Image.alpha_composite(img, overlay).convert("RGB")
+    return Image.alpha_composite(img, overlay).convert("RGB"), meta_terbaca
 def deteksi_gaya_teks(halaman, teks_target):
     data_teks = halaman.get_text("dict")
     for blok in data_teks.get("blocks", []):
