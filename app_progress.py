@@ -784,7 +784,7 @@ if not st.session_state.login_sukses:
         <div class='login-brand-panel'>
             {logo_html}
             <h1>IMOXdR</h1>
-            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan berbasis Glassmorphism UI.</p>
+            <p></p>
             <div style='margin-top:24px;'>
                 <span class='feature-pill'>{SVG_ICONS['calendar']} Auto-Tanggal PDF</span>
                 <span class='feature-pill'>{SVG_ICONS['sparkles']} Hapus Kotak Pink</span>
@@ -796,7 +796,7 @@ if not st.session_state.login_sukses:
     with col_right:
         st.markdown("<div class='glass-card' style='padding: 38px 34px;'>", unsafe_allow_html=True)
         st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:6px;'>{ikon_badge('shield')} <span style='font-size:1.35rem; font-weight:800;'>Masuk Ruang Kerja</span></div>", unsafe_allow_html=True)
-        st.caption("Autentikasi kredensial Sintel46 untuk mengakses seluruh modul otomasi.")
+        st.caption("Keep The Track Clear and The Workflow Sharp")
         st.write("")
         username = st.text_input("Username", placeholder="Masukkan username")
         password = st.text_input("Password", type="password", placeholder="••••••••")
