@@ -15,6 +15,22 @@ USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 RAW_ICON_URL = "https://raw.githubusercontent.com/DR-11-STL/IMO2025-SINTEL46SMT/main/icon_imoxdr.png"
 
+# --- KOLEKSI IKON VEKTOR SVG MODERN (LUCIDE STYLE) ---
+SVG_ICONS = {
+    "calendar": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+    "sparkles": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>',
+    "layers": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    "camera": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>',
+    "shield": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    "clock": '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+    "eye": '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    "cpu": '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>'
+}
+
+def ikon_badge(nama_ikon, warna="#EC6923"):
+    svg = SVG_ICONS.get(nama_ikon, "")
+    return f"<span style='display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(236,105,35,0.14); border:1px solid rgba(236,105,35,0.35); color:{warna}; margin-right:10px; vertical-align:middle;'>{svg}</span>"
+
 @st.cache_data(show_spinner=False)
 def muat_ikon_aplikasi_base64():
     kandidat_file = ["icon_imoxdr.png", "icon_imoxdr.jpg", "icon_imoxdr.jpeg", "bc434dcc.jpeg"]
@@ -51,14 +67,21 @@ NAVY_RGB = "rgb(40, 37, 98)"
 ORANGE_RGB = "rgb(236, 105, 35)"
 
 if st.session_state.dark_mode:
-    BG_APP, BG_SIDEBAR, BG_CARD, BORDER_CARD = "#0B0E17", "#101422", "#14192B", "rgba(40, 37, 98, 0.55)"
-    TEXT_PRIMARY, TEXT_SECONDARY, INPUT_BG = "#F8FAFC", "#94A3B8", "#0E1220"
+    BG_APP = "radial-gradient(circle at 12% 10%, rgba(40, 37, 98, 0.45) 0%, #070A12 45%), radial-gradient(circle at 88% 85%, rgba(236, 105, 35, 0.16) 0%, #070A12 50%)"
+    BG_SIDEBAR = "rgba(13, 17, 29, 0.85)"
+    BG_GLASS = "rgba(20, 26, 46, 0.52)"
+    BORDER_GLASS = "rgba(255, 255, 255, 0.11)"
+    TEXT_PRIMARY, TEXT_SECONDARY, INPUT_BG = "#F8FAFC", "#94A3B8", "rgba(10, 14, 26, 0.72)"
 else:
-    BG_APP, BG_SIDEBAR, BG_CARD, BORDER_CARD = "#F4F6FA", "#FFFFFF", "#FFFFFF", "rgba(40, 37, 98, 0.2)"
-    TEXT_PRIMARY, TEXT_SECONDARY, INPUT_BG = "#0F172A", "#64748B", "#F8FAFC"
+    BG_APP = "radial-gradient(circle at 15% 10%, rgba(40, 37, 98, 0.08) 0%, #F1F5F9 50%), radial-gradient(circle at 85% 90%, rgba(236, 105, 35, 0.08) 0%, #F1F5F9 55%)"
+    BG_SIDEBAR = "rgba(255, 255, 255, 0.85)"
+    BG_GLASS = "rgba(255, 255, 255, 0.72)"
+    BORDER_GLASS = "rgba(40, 37, 98, 0.14)"
+    TEXT_PRIMARY, TEXT_SECONDARY, INPUT_BG = "#0F172A", "#475569", "rgba(248, 250, 252, 0.9)"
 
 css_tema = f"""<style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
 #MainMenu, footer, [data-testid="stDecoration"], .stAppDeployButton, .stToolbarActions,
 [data-testid="stStatusWidget"], div[class*="viewerBadge"], div[class*="profileContainer"],
 div[class*="profilePreview"], div[class*="StatusWidget"], div[class*="manageApp"],
@@ -70,6 +93,7 @@ button[kind="manageApp"], a[href*="streamlit.io/cloud"], a[href*="share.streamli
     width: 0 !important;
     height: 0 !important;
 }}
+
 header[data-testid="stHeader"] {{
     background: transparent !important;
     visibility: visible !important;
@@ -81,6 +105,7 @@ header[data-testid="stHeader"] {{
     display: flex !important;
     background: transparent !important;
 }}
+
 [data-testid="stExpandSidebarButton"], [data-testid="collapsedControl"] {{
     position: fixed !important;
     top: 14px !important;
@@ -90,21 +115,21 @@ header[data-testid="stHeader"] {{
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    width: 40px !important;
-    height: 40px !important;
+    width: 42px !important;
+    height: 42px !important;
     background: linear-gradient(135deg, {NAVY_RGB}, {ORANGE_RGB}) !important;
     color: #FFFFFF !important;
-    border: 1.5px solid rgba(255,255,255,0.4) !important;
-    border-radius: 11px !important;
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45) !important;
+    border: 1px solid rgba(255,255,255,0.35) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45) !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     cursor: pointer !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }}
 [data-testid="stExpandSidebarButton"]:hover, [data-testid="collapsedControl"]:hover {{
-    transform: scale(1.06) !important;
-    box-shadow: 0 6px 18px rgba(236, 105, 35, 0.65) !important;
+    transform: translateY(-2px) scale(1.04) !important;
+    box-shadow: 0 10px 24px rgba(236, 105, 35, 0.6) !important;
 }}
 [data-testid="stExpandSidebarButton"] svg, [data-testid="collapsedControl"] svg {{
     fill: #FFFFFF !important;
@@ -112,35 +137,194 @@ header[data-testid="stHeader"] {{
     width: 22px !important;
     height: 22px !important;
 }}
+
 .block-container {{
-    padding-top: 2.8rem !important;
+    padding-top: 2.6rem !important;
     padding-left: 2.2rem !important;
     padding-right: 2.2rem !important;
-    max-width: 100% !important;
+    max-width: 1480px !important;
 }}
+
 html, body, [class*="css"] {{font-family: 'Plus Jakarta Sans', sans-serif !important;}}
-.stApp {{background-color: {BG_APP}; color: {TEXT_PRIMARY};}}
-section[data-testid="stSidebar"] {{background-color: {BG_SIDEBAR} !important; border-right: 1px solid {BORDER_CARD}; z-index: 1000000 !important;}}
+.stApp {{
+    background: {BG_APP} !important;
+    background-attachment: fixed !important;
+    color: {TEXT_PRIMARY};
+}}
+
+section[data-testid="stSidebar"] {{
+    background: {BG_SIDEBAR} !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-right: 1px solid {BORDER_GLASS} !important;
+    z-index: 1000000 !important;
+}}
+
 .stMarkdown p, label, span {{color: {TEXT_PRIMARY} !important;}}
-.title-kai {{font-size: 2.3rem; font-weight: 900; margin: 0; color: {NAVY_RGB}; -webkit-text-stroke: 1.2px #FFFFFF; text-shadow: 2px 2px 6px rgba(0,0,0,0.7);}}
-.login-brand-panel {{background: linear-gradient(145deg, {NAVY_RGB} 0%, #191742 60%, {ORANGE_RGB} 135%); border-radius: 20px; padding: 40px 32px; color: #FFFFFF !important; border: 1px solid rgba(255,255,255,0.15);}}
-.login-brand-panel h1 {{font-size: 3.2rem; font-weight: 900; color: {NAVY_RGB}; -webkit-text-stroke: 1.5px #FFFFFF; margin-bottom: 10px;}}
-.login-brand-panel p {{color: #E2E8F0 !important; font-size: 0.95rem;}}
-.feature-pill {{display: inline-block; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.22); padding: 6px 12px; border-radius: 12px; font-size: 0.78rem; font-weight: 600; color: #FFFFFF !important; margin: 8px 6px 0 0;}}
-.bento-card {{background-color: {BG_CARD}; border: 1px solid {BORDER_CARD}; border-radius: 16px; padding: 20px; margin-bottom: 16px;}}
-.bento-hero {{background: linear-gradient(135deg, {NAVY_RGB} 0%, {ORANGE_RGB} 125%); border-radius: 16px; padding: 20px; color: #FFFFFF !important; margin-bottom: 16px;}}
-.bento-hero * {{color: #FFFFFF !important;}}
-.kpi-title {{font-size: 0.76rem; font-weight: 600; color: {TEXT_SECONDARY} !important; text-transform: uppercase;}}
-.kpi-value {{font-size: 1.9rem; font-weight: 800; color: {TEXT_PRIMARY} !important; margin: 4px 0;}}
-.kpi-badge-orange {{background-color: rgba(236, 105, 35, 0.18); color: {ORANGE_RGB} !important; padding: 3px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 700;}}
-.ai-orb-box {{background-color: {BG_CARD}; border: 1px solid {BORDER_CARD}; border-radius: 16px; padding: 20px; text-align: center;}}
-.ai-orb {{width: 78px; height: 78px; margin: 10px auto 14px auto; border-radius: 50%; background: radial-gradient(circle at 30% 30%, {ORANGE_RGB}, {NAVY_RGB} 70%, #090D16 100%); box-shadow: 0 0 28px rgba(236, 105, 35, 0.55); animation: pulseOrb 3s infinite ease-in-out;}}
-@keyframes pulseOrb {{0% {{transform: scale(0.96);}} 50% {{transform: scale(1.04);}} 100% {{transform: scale(0.96);}}}}
-.stButton>button {{background-color: {NAVY_RGB} !important; color: #FFFFFF !important; font-weight: 600 !important; border-radius: 10px !important; border: 1px solid rgba(255,255,255,0.2) !important; padding: 0.6rem 1.2rem !important; transition: all 0.25s ease !important;}}
-.stButton>button:hover {{background-color: {ORANGE_RGB} !important; border: 1px solid #FFFFFF !important; transform: translateY(-2px);}}
-.stTextInput>div>div>input, .stTextArea>div>div>textarea {{border-radius: 10px !important; border: 1.5px solid {NAVY_RGB} !important; background-color: {INPUT_BG} !important; color: {TEXT_PRIMARY} !important;}}
-.stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {{border-color: {ORANGE_RGB} !important;}}
-hr {{border-top: 1px solid {BORDER_CARD} !important;}}
+
+.title-kai {{
+    font-size: 2.1rem;
+    font-weight: 900;
+    margin: 0;
+    background: linear-gradient(90deg, #FFFFFF 0%, #CBD5E1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}}
+
+/* GLASSMORPHISM CARDS */
+.glass-card {{
+    background: {BG_GLASS};
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border: 1px solid {BORDER_GLASS};
+    border-radius: 20px;
+    padding: 22px 24px;
+    margin-bottom: 18px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    transition: transform 0.25s ease, border-color 0.25s ease;
+}}
+.glass-card:hover {{
+    border-color: rgba(236, 105, 35, 0.35);
+}}
+
+.glass-hero {{
+    background: linear-gradient(135deg, rgba(40, 37, 98, 0.88) 0%, rgba(236, 105, 35, 0.88) 130%);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 20px;
+    padding: 20px 22px;
+    color: #FFFFFF !important;
+    margin-bottom: 18px;
+    box-shadow: 0 12px 30px rgba(236, 105, 35, 0.22);
+}}
+.glass-hero * {{color: #FFFFFF !important;}}
+
+.login-brand-panel {{
+    background: linear-gradient(145deg, rgba(40, 37, 98, 0.9) 0%, rgba(16, 20, 38, 0.95) 60%, rgba(236, 105, 35, 0.85) 140%);
+    backdrop-filter: blur(20px);
+    border-radius: 24px;
+    padding: 42px 34px;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
+}}
+.login-brand-panel h1 {{
+    font-size: 3.1rem;
+    font-weight: 900;
+    color: #FFFFFF !important;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+}}
+.login-brand-panel p {{color: #CBD5E1 !important; font-size: 0.96rem; line-height: 1.6;}}
+
+.feature-pill {{
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 7px 14px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #FFFFFF !important;
+    margin: 8px 6px 0 0;
+}}
+
+.kpi-title {{font-size: 0.72rem; font-weight: 700; color: {TEXT_SECONDARY} !important; text-transform: uppercase; letter-spacing: 0.6px;}}
+.kpi-value {{font-size: 1.85rem; font-weight: 800; color: {TEXT_PRIMARY} !important; margin: 4px 0;}}
+.kpi-badge-orange {{
+    display: inline-block;
+    background: rgba(236, 105, 35, 0.16);
+    border: 1px solid rgba(236, 105, 35, 0.35);
+    color: #FF8A4C !important;
+    padding: 3px 11px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+}}
+
+.ai-orb-box {{
+    background: {BG_GLASS};
+    backdrop-filter: blur(18px);
+    border: 1px solid {BORDER_GLASS};
+    border-radius: 20px;
+    padding: 22px 18px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+}}
+.ai-orb {{
+    width: 74px;
+    height: 74px;
+    margin: 8px auto 14px auto;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, {ORANGE_RGB}, {NAVY_RGB} 70%, #070A12 100%);
+    box-shadow: 0 0 32px rgba(236, 105, 35, 0.55);
+    animation: pulseOrb 3.2s infinite ease-in-out;
+}}
+@keyframes pulseOrb {{0% {{transform: scale(0.95);}} 50% {{transform: scale(1.05);}} 100% {{transform: scale(0.95);}}}}
+
+/* MODERN FILE UPLOADER DROPZONE */
+[data-testid="stFileUploader"] section {{
+    background: rgba(40, 37, 98, 0.14) !important;
+    border: 1.5px dashed rgba(236, 105, 35, 0.55) !important;
+    border-radius: 16px !important;
+    padding: 18px !important;
+    transition: all 0.25s ease !important;
+}}
+[data-testid="stFileUploader"] section:hover {{
+    background: rgba(236, 105, 35, 0.08) !important;
+    border-color: {ORANGE_RGB} !important;
+}}
+
+/* BUTTONS & INPUTS */
+.stButton>button, .stDownloadButton>button {{
+    background: linear-gradient(135deg, {NAVY_RGB} 0%, #373385 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
+    padding: 0.65rem 1.3rem !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28) !important;
+    transition: all 0.25s ease !important;
+}}
+.stButton>button:hover, .stDownloadButton>button:hover {{
+    background: linear-gradient(135deg, {ORANGE_RGB} 0%, #FF7E38 100%) !important;
+    border-color: #FFFFFF !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(236, 105, 35, 0.45) !important;
+}}
+
+.stTextInput>div>div>input, .stTextArea>div>div>textarea {{
+    border-radius: 12px !important;
+    border: 1px solid {BORDER_GLASS} !important;
+    background-color: {INPUT_BG} !important;
+    color: {TEXT_PRIMARY} !important;
+    padding: 10px 14px !important;
+}}
+.stTextInput>div>div>input:focus, .stTextArea>div>div>textarea:focus {{
+    border-color: {ORANGE_RGB} !important;
+    box-shadow: 0 0 0 2px rgba(236, 105, 35, 0.25) !important;
+}}
+
+/* RADIO PILLS DI SIDEBAR */
+div[role="radiogroup"] label {{
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid {BORDER_GLASS} !important;
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 8px !important;
+    transition: all 0.2s ease !important;
+}}
+div[role="radiogroup"] label:hover {{
+    border-color: {ORANGE_RGB} !important;
+    background: rgba(236, 105, 35, 0.1) !important;
+}}
+
+hr {{border-top: 1px solid {BORDER_GLASS} !important;}}
 </style>"""
 st.markdown(css_tema, unsafe_allow_html=True)
 
@@ -215,6 +399,28 @@ setupAppBrandAndClean();
 setInterval(setupAppBrandAndClean, 800);
 </script>
 """, height=0, width=0)
+
+# --- FUNGSI RENDER PREVIEW PDF OTOMATIS ---
+def render_preview_pdf(pdf_bytes, maks_halaman=3):
+    doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    total_hal = len(doc)
+    gambar_halaman = []
+    for idx in range(min(total_hal, maks_halaman)):
+        pix = doc[idx].get_pixmap(dpi=130)
+        img = Image.open(io.BytesIO(pix.tobytes("png")))
+        gambar_halaman.append((idx + 1, img))
+    doc.close()
+    return gambar_halaman, total_hal
+
+def tampilkan_panel_preview_pdf(pdf_bytes, judul="Pratinjau Dokumen PDF"):
+    if not pdf_bytes:
+        return
+    gambar_list, total_hal = render_preview_pdf(pdf_bytes, maks_halaman=4)
+    st.markdown(f"<div style='margin-top:14px; margin-bottom:8px; font-weight:700; font-size:0.92rem; display:flex; align-items:center;'>{ikon_badge('eye')} {judul} <span style='margin-left:8px; font-size:0.76rem; color:{TEXT_SECONDARY};'>(Menampilkan {len(gambar_list)} dari {total_hal} halaman)</span></div>", unsafe_allow_html=True)
+    cols = st.columns(len(gambar_list))
+    for col, (no_hal, img) in zip(cols, gambar_list):
+        with col:
+            st.image(img, caption=f"Halaman {no_hal}", use_container_width=True)
 
 @st.cache_data(show_spinner=False)
 def ambil_bytes_font_roboto():
@@ -567,73 +773,89 @@ def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_wat
     doc.close()
     return output_pdf.getvalue(), total_teks, total_gbr
 
+# --- HALAMAN LOGIN ---
 if not st.session_state.login_sukses:
     st.write("")
     st.write("")
-    _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
+    _, col_left, col_right, _ = st.columns([0.45, 2.3, 2.1, 0.45], gap="large")
     with col_left:
-        logo_html = f"<img src='{ICON_DATA_URL}' style='width:68px; height:68px; border-radius:16px; border:1.5px solid rgba(255,255,255,0.28); margin-bottom:14px; box-shadow:0 6px 18px rgba(0,0,0,0.45);'/>" if ICON_DATA_URL else ""
-        st.markdown(f"""<div class='login-brand-panel'>{logo_html}<h1>IMOXdR 📑</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        logo_html = f"<img src='{ICON_DATA_URL}' style='width:72px; height:72px; border-radius:18px; border:1.5px solid rgba(255,255,255,0.28); margin-bottom:16px; box-shadow:0 8px 24px rgba(0,0,0,0.45);'/>" if ICON_DATA_URL else ""
+        st.markdown(f"""
+        <div class='login-brand-panel'>
+            {logo_html}
+            <h1>IMOXdR</h1>
+            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan berbasis Glassmorphism UI.</p>
+            <div style='margin-top:24px;'>
+                <span class='feature-pill'>{SVG_ICONS['calendar']} Auto-Tanggal PDF</span>
+                <span class='feature-pill'>{SVG_ICONS['sparkles']} Hapus Kotak Pink</span>
+                <span class='feature-pill'>{SVG_ICONS['layers']} Jahit Foto 0-50-100%</span>
+                <span class='feature-pill'>{SVG_ICONS['camera']} Watermark</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with col_right:
-        st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
-        st.markdown("### Masuk Ruang Kerja 👋")
-        st.caption("Silakan masukkan Username dan Password untuk melanjutkan.")
+        st.markdown("<div class='glass-card' style='padding: 38px 34px;'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:6px;'>{ikon_badge('shield')} <span style='font-size:1.35rem; font-weight:800;'>Masuk Ruang Kerja</span></div>", unsafe_allow_html=True)
+        st.caption("Autentikasi kredensial Sintel46 untuk mengakses seluruh modul otomasi.")
         st.write("")
-        username = st.text_input("Username")
-        password = st.text_input("Password", type="password")
+        username = st.text_input("Username", placeholder="Masukkan username")
+        password = st.text_input("Password", type="password", placeholder="••••••••")
         st.write("")
         if st.button("Masuk Ruang Kerja", use_container_width=True):
             if username == USER_VALID and password == PASS_VALID:
                 st.session_state.login_sukses = True
                 st.rerun()
             else:
-                st.error("❌ Username atau Password salah!")
+                st.error("Username atau Password salah!")
         st.markdown("</div>", unsafe_allow_html=True)
     st.stop()
 
+# --- SIDEBAR NAVIGASI ---
 with st.sidebar:
     if ICON_DATA_URL:
-        st.markdown(f"<div style='display:flex; align-items:center; gap:12px;'><img src='{ICON_DATA_URL}' style='width:46px; height:46px; border-radius:12px; border:1px solid rgba(255,255,255,0.25);'/><div><p class='title-kai' style='font-size:1.75rem;'>IMOXdR</p><span style='font-size:0.75rem; color:{TEXT_SECONDARY};'>Automation Workspace</span></div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; gap:12px;'><img src='{ICON_DATA_URL}' style='width:48px; height:48px; border-radius:14px; border:1px solid rgba(255,255,255,0.25);'/><div><p class='title-kai' style='font-size:1.7rem;'>IMOXdR</p><span style='font-size:0.74rem; color:{TEXT_SECONDARY};'>Automation Workspace</span></div></div>", unsafe_allow_html=True)
     else:
-        st.markdown("<p class='title-kai'>IMOXdR 📑</p>", unsafe_allow_html=True)
+        st.markdown("<p class='title-kai'>IMOXdR</p>", unsafe_allow_html=True)
         st.caption("Automation Workspace Suite")
     st.divider()
     pilihan_menu = st.radio("Mode Aplikasi", [
-        "📅 Auto-Ubah Tanggal PDF & Foto",
-        "🧹 Bersihkan Kotak Pink Anotasi",
-        "🚀 Foto Progres 0-50-100%",
-        "📸 Generator Foto Watermark"
+        "Auto-Ubah Tanggal PDF & Foto",
+        "Bersihkan Kotak Pink Anotasi",
+        "Foto Progres 0-50-100%",
+        "Generator Foto Watermark"
     ], label_visibility="collapsed")
     st.divider()
-    mode_gelap = st.toggle("🌙 Dark Mode", value=st.session_state.dark_mode)
+    mode_gelap = st.toggle("Dark Mode", value=st.session_state.dark_mode)
     if mode_gelap != st.session_state.dark_mode:
         st.session_state.dark_mode = mode_gelap
         st.rerun()
     st.write("")
-    if st.button("🚪 Keluar", use_container_width=True):
+    if st.button("Keluar Sesi", use_container_width=True):
         st.session_state.login_sukses = False
         st.rerun()
 
-st.markdown("### Selamat Bekerja dR 👋")
+# --- HEADER & KPI BENTO ---
+st.markdown(f"<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;'><div><h2 style='margin:0; font-weight:800; letter-spacing:-0.4px;'>Selamat Bekerja, dR</h2><span style='font-size:0.84rem; color:{TEXT_SECONDARY};'>Workspace Otomasi Laporan Perawatan Sintel Daop 4 Semarang</span></div></div>", unsafe_allow_html=True)
 
-kpi1, kpi2, kpi3, kpi4 = st.columns([1.4, 1, 1, 1.2])
+kpi1, kpi2, kpi3, kpi4 = st.columns([1.45, 1, 1, 1.15])
 with kpi1:
-    st.markdown("<div class='bento-hero'><div style='font-size:0.76rem; font-weight:700;'>ENGINE TERPADU</div><div style='font-size:1.3rem; font-weight:800; margin:4px 0;'>IMOXdR All-in-One</div><div style='font-size:0.76rem;'>4 Modul Otomasi Dokumen</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='glass-hero'><div style='font-size:0.72rem; font-weight:700; letter-spacing:0.8px; opacity:0.85;'>ENGINE TERPADU</div><div style='font-size:1.35rem; font-weight:800; margin:4px 0;'>IMOXdR Suite v2.0</div><div style='font-size:0.78rem; opacity:0.9;'>Glassmorphism UI • Live PDF Preview</div></div>", unsafe_allow_html=True)
 with kpi2:
-    st.markdown("<div class='bento-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar Aman</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar Aman</span></div>", unsafe_allow_html=True)
 with kpi3:
-    st.markdown("<div class='bento-card'><div class='kpi-title'>Auto-Tanggal</div><div class='kpi-value'>Auto</div><span class='kpi-badge-orange'>Font & Foto PDF</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='kpi-title'>Auto-Tanggal</div><div class='kpi-value'>Sync</div><span class='kpi-badge-orange'>Font & Foto PDF</span></div>", unsafe_allow_html=True)
 with kpi4:
-    st.markdown(f"<div class='bento-card'><div class='kpi-title'>Dokumen Diproses</div><div class='kpi-value'>{len(st.session_state.riwayat_proses) - 1}</div><span class='kpi-badge-orange'>Sesi Hari Ini</span></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='glass-card'><div class='kpi-title'>Dokumen Diproses</div><div class='kpi-value'>{len(st.session_state.riwayat_proses) - 1}</div><span class='kpi-badge-orange'>Sesi Hari Ini</span></div>", unsafe_allow_html=True)
 
-main_area, right_panel = st.columns([2.7, 1.05], gap="medium")
+# --- AREA KERJA UTAMA ---
+main_area, right_panel = st.columns([2.75, 1.05], gap="medium")
 
 with main_area:
-    if pilihan_menu == "📅 Auto-Ubah Tanggal PDF & Foto":
-        st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 📅 Auto-Ubah Tanggal PDF & Foto (Deteksi Otomatis)")
-        st.caption("Tanggal asli di dalam PDF otomatis terbaca saat file diunggah, dan seluruh teks serta foto akan sinkron ke tanggal baru.")
-        pdf_tanggal = st.file_uploader("📥 Unggah File PDF Laporan Perawatan", type=["pdf"])
+    if pilihan_menu == "Auto-Ubah Tanggal PDF & Foto":
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:4px;'>{ikon_badge('calendar')} <span style='font-size:1.18rem; font-weight:800;'>Auto-Ubah Tanggal PDF & Foto (Deteksi Otomatis)</span></div>", unsafe_allow_html=True)
+        st.caption("Tanggal asli di dalam PDF otomatis terbaca saat file diunggah, lengkap dengan pratinjau halaman sebelum dan sesudah revisi.")
+        pdf_tanggal = st.file_uploader("Unggah File PDF Laporan Perawatan", type=["pdf"])
 
         default_lama_1 = "2026-10-01"
         default_lama_2 = "01 Oktober 2026"
@@ -646,6 +868,9 @@ with main_area:
                 default_lama_1 = det_iso
             if det_indo:
                 default_lama_2 = det_indo
+
+            with st.expander("Lihat Pratinjau PDF Asli Sebelum Diubah", expanded=False):
+                tampilkan_panel_preview_pdf(pdf_bytes_cache, "Pratinjau Dokumen Asli")
 
         c1, c2 = st.columns(2)
         with c1:
@@ -680,54 +905,62 @@ with main_area:
             return teks_tgl.strip()
 
         otomatis_wm = buat_hari_tanggal_indo(baru_2, baru_1)
-        edit_foto_pdf = st.checkbox(f"✅ Otomatis ubah tanggal di dalam seluruh foto menjadi: **{otomatis_wm}**", value=True)
+        edit_foto_pdf = st.checkbox(f"Otomatis ubah tanggal di dalam seluruh foto menjadi: **{otomatis_wm}**", value=True)
 
-        if pdf_bytes_cache and st.button("🔄 Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
+        if pdf_bytes_cache and st.button("Eksekusi Perubahan Otomatis Sekarang", use_container_width=True):
             with st.spinner("Mendeteksi jenis font asli & menyinkronkan seluruh halaman serta foto..."):
                 hasil_pdf_tgl, jml_teks, jml_gbr = proses_multi_tanggal_pdf(
                     pdf_bytes_cache, [(lama_1, baru_1), (lama_2, baru_2), (lama_3, baru_3)],
                     edit_foto_pdf, otomatis_wm
                 )
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Auto-Tanggal", "detail": f"{pdf_tanggal.name[:22]}... ({jml_teks} teks, {jml_gbr} foto)"})
-                st.success(f"✅ Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
+                st.success(f"Berhasil! **{jml_teks} teks PDF** dan **{jml_gbr} foto dokumentasi** diperbarui menjadi **{otomatis_wm}**.")
+                tampilkan_panel_preview_pdf(hasil_pdf_tgl, "Pratinjau Hasil Revisi (Siap Unduh)")
                 nama_file_out = f"Revisi_{pdf_tanggal.name.replace(lama_1, baru_1)}"
-                st.download_button("⬇️ Unduh PDF Hasil Revisi", hasil_pdf_tgl, nama_file_out, "application/pdf", use_container_width=True)
+                st.download_button("Unduh PDF Hasil Revisi", hasil_pdf_tgl, nama_file_out, "application/pdf", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    elif pilihan_menu == "🧹 Bersihkan Kotak Pink Anotasi":
-        st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 🧹 Bersihkan Kotak Pink Anotasi")
-        st.caption("Unggah satu atau banyak file PDF checklist sekaligus untuk menghapus anotasi kotak pink.")
-        pdf_inputs = st.file_uploader("📥 Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True, key="up_clean")
-        if pdf_inputs and st.button(f"🧹 Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
+    elif pilihan_menu == "Bersihkan Kotak Pink Anotasi":
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:4px;'>{ikon_badge('sparkles')} <span style='font-size:1.18rem; font-weight:800;'>Bersihkan Kotak Pink Anotasi</span></div>", unsafe_allow_html=True)
+        st.caption("Unggah satu atau banyak file PDF checklist sekaligus untuk menghapus anotasi kotak pink dan mengecek hasilnya.")
+        pdf_inputs = st.file_uploader("Unggah PDF Checklist Dasar (Bisa blok banyak file sekaligus)", type=["pdf"], accept_multiple_files=True, key="up_clean")
+        if pdf_inputs and st.button(f"Bersihkan {len(pdf_inputs)} File Anotasi Sekarang", use_container_width=True):
             if len(pdf_inputs) == 1:
                 pdf_file = pdf_inputs[0]
                 hasil_pdf_bytes = proses_dokumen(pdf_file, [])
                 nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Clean Anotasi", "detail": pdf_file.name[:26]})
-                st.success("✨ Selesai! Kotak pink berhasil dihapus.")
-                st.download_button("⬇️ Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
+                st.success("Selesai! Kotak pink berhasil dihapus.")
+                tampilkan_panel_preview_pdf(hasil_pdf_bytes, "Pratinjau Dokumen Bersih")
+                st.download_button("Unduh File Bersih", data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
             else:
                 zip_buffer = io.BytesIO()
+                preview_pertama = None
                 with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-                    for pdf_file in pdf_inputs:
+                    for idx, pdf_file in enumerate(pdf_inputs):
                         nama_unduh = pdf_file.name[:-4] + " revisi.pdf" if pdf_file.name.lower().endswith(".pdf") else pdf_file.name + " revisi.pdf"
-                        zip_file.writestr(nama_unduh, proses_dokumen(pdf_file, []))
+                        hasil_item = proses_dokumen(pdf_file, [])
+                        if idx == 0:
+                            preview_pertama = hasil_item
+                        zip_file.writestr(nama_unduh, hasil_item)
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Batch ZIP", "detail": f"{len(pdf_inputs)} file PDF"})
-                st.success(f"✨ Selesai! {len(pdf_inputs)} file dibersihkan.")
-                st.download_button("⬇️ Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Bersih.zip", mime="application/zip", use_container_width=True)
+                st.success(f"Selesai! {len(pdf_inputs)} file dibersihkan.")
+                if preview_pertama:
+                    tampilkan_panel_preview_pdf(preview_pertama, f"Pratinjau Sampel File Pertama ({pdf_inputs[0].name})")
+                st.download_button("Unduh Semua File (ZIP)", data=zip_buffer.getvalue(), file_name="Laporan_Bersih.zip", mime="application/zip", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
-    elif pilihan_menu == "🚀 Foto Progres 0-50-100%":
-        st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.markdown("#### 🚀 Bersihkan Anotasi & Jahit Foto Progres (0% - 50% - 100%)")
+    elif pilihan_menu == "Foto Progres 0-50-100%":
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:4px;'>{ikon_badge('layers')} <span style='font-size:1.18rem; font-weight:800;'>Bersihkan Anotasi & Jahit Foto Progres (0% - 50% - 100%)</span></div>", unsafe_allow_html=True)
         st.caption("Unggah PDF checklist dasar, lalu isi hingga 5 judul aset beserta 3 foto progres (0%, 50%, 100%) di masing-masing aset.")
-        pdf_jahit = st.file_uploader("📥 Unggah File PDF Checklist Dasar", type=["pdf"], key="up_jahit_single")
+        pdf_jahit = st.file_uploader("Unggah File PDF Checklist Dasar", type=["pdf"], key="up_jahit_single")
 
-        st.subheader("📸 Form Rangkaian Foto Progres (5 Aset × 3 Kolom)")
+        st.markdown("##### Form Rangkaian Foto Progres (5 Aset × 3 Kolom)")
         data_siap_proses = []
         for i in range(1, 6):
-            with st.expander(f"📌 Rangkaian Aset ke-{i}", expanded=(i == 1)):
+            with st.expander(f"Rangkaian Aset ke-{i}", expanded=(i == 1)):
                 nama_aset = st.text_input(f"Nama Aset {i}", key=f"nama_{i}", placeholder="Contoh: Peraga Sinyal / Penggerak Wesel")
                 col1, col2, col3 = st.columns(3)
                 with col1:
@@ -748,20 +981,21 @@ with main_area:
         st.write("")
         if pdf_jahit is not None:
             if len(data_siap_proses) > 0:
-                if st.button("🚀 Menjahit Dokumen Sekarang!", use_container_width=True):
+                if st.button("Menjahit Dokumen Sekarang!", use_container_width=True):
                     with st.spinner("Membersihkan kotak pink & menjahit foto progres..."):
                         hasil_pdf_bytes = proses_dokumen(pdf_jahit, data_siap_proses)
                         nama_unduh = pdf_jahit.name[:-4] + " revisi.pdf" if pdf_jahit.name.lower().endswith(".pdf") else pdf_jahit.name + " revisi.pdf"
                         st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Jahit Foto", "detail": f"{len(data_siap_proses)} aset dijahit"})
-                        st.success("🏆 Dokumen Selesai Dijahit!")
-                        st.download_button("⬇️ Unduh File Final: " + nama_unduh, data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
+                        st.success("Dokumen Selesai Dijahit!")
+                        tampilkan_panel_preview_pdf(hasil_pdf_bytes, "Pratinjau Halaman Final")
+                        st.download_button("Unduh File Final: " + nama_unduh, data=hasil_pdf_bytes, file_name=nama_unduh, mime="application/pdf", use_container_width=True)
             else:
-                st.info("ℹ️ Isi Nama Aset serta Foto 0%, 50%, dan 100% minimal pada 1 rangkaian untuk memunculkan tombol jahit.")
+                st.info("Isi Nama Aset serta Foto 0%, 50%, dan 100% minimal pada 1 rangkaian untuk memunculkan tombol jahit.")
         st.markdown("</div>", unsafe_allow_html=True)
 
-    elif pilihan_menu == "📸 Generator Foto Watermark":
-        st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-        st.subheader("📸 Generator Foto Kegiatan Watermark")
+    elif pilihan_menu == "Generator Foto Watermark":
+        st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+        st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:4px;'>{ikon_badge('camera')} <span style='font-size:1.18rem; font-weight:800;'>Generator Foto Kegiatan Watermark</span></div>", unsafe_allow_html=True)
         uploaded_image = st.file_uploader("Pilih foto kegiatan yang masih polos...", type=['jpg', 'jpeg', 'png'])
         if uploaded_image is not None:
             col1, col2 = st.columns(2)
@@ -793,14 +1027,15 @@ with main_area:
                 st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
                 buf_img = io.BytesIO()
                 image_wm.save(buf_img, format="JPEG", quality=95, subsampling=0)
-                st.download_button("⬇️ Unduh Foto", data=buf_img.getvalue(), file_name="Foto_Watermark.jpg", mime="image/jpeg", use_container_width=True)
+                st.download_button("Unduh Foto", data=buf_img.getvalue(), file_name="Foto_Watermark.jpg", mime="image/jpeg", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
+# --- PANEL KANAN (STATUS & LOG) ---
 with right_panel:
-    st.markdown(f"<div class='ai-orb-box'><div class='ai-orb'></div><div style='font-weight:800; font-size:1.05rem; margin-bottom:4px;'>Smart Document Sync</div><div style='font-size:0.78rem; color:{TEXT_SECONDARY};'>4 modul aktif: Auto-Tanggal PDF & Foto, Pembersih Kotak Pink, Penjahit Progres, dan Watermark.</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='ai-orb-box'><div class='ai-orb'></div><div style='font-weight:800; font-size:1.05rem; margin-bottom:4px;'>Smart Document Sync</div><div style='font-size:0.78rem; color:{TEXT_SECONDARY}; line-height:1.5;'>4 modul aktif: Auto-Tanggal PDF & Foto, Pembersih Kotak Pink, Penjahit Progres, dan Watermark.</div></div>", unsafe_allow_html=True)
     st.write("")
-    st.markdown("<div class='bento-card'>", unsafe_allow_html=True)
-    st.markdown("##### 🕒 Aktivitas Terbaru")
+    st.markdown("<div class='glass-card'>", unsafe_allow_html=True)
+    st.markdown(f"<div style='display:flex; align-items:center; gap:8px; font-weight:800; font-size:0.95rem; margin-bottom:10px;'>{SVG_ICONS['clock']} Aktivitas Terbaru</div>", unsafe_allow_html=True)
     for item in st.session_state.riwayat_proses[:5]:
-        st.markdown(f"<div style='border-bottom:1px solid {BORDER_CARD}; padding:8px 0;'><div style='display:flex; justify-content:space-between; font-size:0.74rem;'><span style='font-weight:700; color:{ORANGE_RGB};'>{item['modul']}</span><span style='color:{TEXT_SECONDARY};'>{item['waktu']}</span></div><div style='font-size:0.79rem; margin-top:2px;'>{item['detail']}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div style='border-bottom:1px solid {BORDER_GLASS}; padding:9px 0;'><div style='display:flex; justify-content:space-between; font-size:0.74rem;'><span style='font-weight:700; color:#FF8A4C;'>{item['modul']}</span><span style='color:{TEXT_SECONDARY};'>{item['waktu']}</span></div><div style='font-size:0.8rem; margin-top:3px;'>{item['detail']}</div></div>", unsafe_allow_html=True)
     st.markdown("</div>", unsafe_allow_html=True)
