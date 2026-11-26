@@ -13,6 +13,46 @@ USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
 st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide", initial_sidebar_state="collapsed")
+components.html("""
+<script>
+const doc = window.parent.document;
+const head = doc.head;
+
+// Buat ikon SVG kustom IMO2025 dR untuk thumbnail layar utama HP
+const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#282562"/>
+      <stop offset="100%" stop-color="#EC6923"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#g)"/>
+  <text x="50%" y="44%" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-weight="900" font-size="112">IMO</text>
+  <text x="50%" y="65%" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-weight="800" font-size="88">2025</text>
+  <text x="50%" y="84%" text-anchor="middle" fill="#FFD8C2" font-family="sans-serif" font-weight="700" font-size="64">dR</text>
+</svg>`;
+const iconUrl = "data:image/svg+xml;base64," + btoa(svgIcon);
+
+const setMeta = (name, content) => {
+    let m = doc.querySelector(`meta[name="${name}"]`);
+    if (!m) { m = doc.createElement('meta'); m.name = name; head.appendChild(m); }
+    m.content = content;
+};
+const setLink = (rel, href) => {
+    let l = doc.querySelector(`link[rel="${rel}"]`);
+    if (!l) { l = doc.createElement('link'); l.rel = rel; head.appendChild(l); }
+    l.href = href;
+};
+
+setMeta("mobile-web-app-capable", "yes");
+setMeta("apple-mobile-web-app-capable", "yes");
+setMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
+setMeta("apple-mobile-web-app-title", "IMO2025 dR");
+setMeta("theme-color", "#0B0E17");
+setLink("apple-touch-icon", iconUrl);
+setLink("icon", iconUrl);
+</script>
+""", height=0, width=0)
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
