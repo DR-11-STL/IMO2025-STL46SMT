@@ -57,7 +57,6 @@ header[data-testid="stHeader"] {{
     display: flex !important;
     background: transparent !important;
 }}
-/* Tombol Panah / Garis Sidebar Standby Permanen di Pojok Kiri Atas */
 [data-testid="stExpandSidebarButton"], [data-testid="collapsedControl"] {{
     position: fixed !important;
     top: 14px !important;
@@ -121,7 +120,6 @@ hr {{border-top: 1px solid {BORDER_CARD} !important;}}
 </style>"""
 st.markdown(css_tema, unsafe_allow_html=True)
 
-# Pembersih otomatis overlay "< Manage app" di pojok kanan bawah Streamlit Cloud
 components.html("""
 <script>
 const hideManageApp = () => {
@@ -142,6 +140,29 @@ hideManageApp();
 setInterval(hideManageApp, 800);
 </script>
 """, height=0, width=0)
+
+@st.cache_data(show_spinner=False)
+def ambil_bytes_font_roboto():
+    try:
+        req = urllib.request.Request(
+            "https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Medium.ttf",
+            headers={'User-Agent': 'Mozilla/5.0'}
+        )
+        return urllib.request.urlopen(req, timeout=5).read()
+    except Exception:
+        return None
+
+def muat_font_roboto(ukuran):
+    font_bytes = ambil_bytes_font_roboto()
+    if font_bytes:
+        try:
+            return ImageFont.truetype(io.BytesIO(font_bytes), ukuran)
+        except Exception:
+            pass
+    try:
+        return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", ukuran)
+    except Exception:
+        return ImageFont.load_default()
 
 def crop_center_square(image):
     img = ImageOps.exif_transpose(image).convert("RGB")
@@ -173,11 +194,18 @@ def proses_dokumen(pdf_file, data_rangkaian):
         y_pos, items_per_page = 60, 0
         halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
 
+        path_font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        path_font_reg = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
         for data in data_rangkaian:
             if items_per_page >= 3:
                 halaman_baru = doc.new_page(width=lebar_halaman, height=tinggi_halaman)
                 y_pos, items_per_page = 60, 0
-            halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"{data['nama_aset']}", fontsize=13, fontname="hebo", color=(0, 0, 0))
+            try:
+                halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"{data['nama_aset']}", fontsize=13, fontname="dejavubold", fontfile=path_font_bold, color=(0, 0, 0))
+            except Exception:
+                halaman_baru.insert_text(fitz.Point(mulai_x, y_pos), f"{data['nama_aset']}", fontsize=13, fontname="hebo", color=(0, 0, 0))
+
             koleksi = [
                 {"file": data["img_0"], "label": "Foto 0%"},
                 {"file": data["img_50"], "label": "Foto 50%"},
@@ -191,7 +219,10 @@ def proses_dokumen(pdf_file, data_rangkaian):
                 x0 = mulai_x + i * (lebar_gambar + spasi)
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
-                halaman_baru.insert_text(fitz.Point(x0 + 52, y0 + tinggi_gambar + 18), item["label"], fontsize=11, fontname="helv", color=(0, 0, 0))
+                try:
+                    halaman_baru.insert_text(fitz.Point(x0 + 50, y0 + tinggi_gambar + 18), item["label"], fontsize=11, fontname="dejavureg", fontfile=path_font_reg, color=(0, 0, 0))
+                except Exception:
+                    halaman_baru.insert_text(fitz.Point(x0 + 52, y0 + tinggi_gambar + 18), item["label"], fontsize=11, fontname="helv", color=(0, 0, 0))
             y_pos += 225
             items_per_page += 1
 
@@ -215,13 +246,33 @@ def baca_metadata_foto_asli(img_rgba):
     bx1, by1 = int(w * 0.90), int(h * 0.990)
     jam_hasil, koord_hasil, alamat_hasil = None, None, None
 
+    def normalisasi_koordinat(raw_k):
+        k = raw_k.replace(" ", "")
+        bagian = k.split(",")
+        if len(bagian) == 2:
+            lat, lon = bagian[0], bagian[1]
+            # Pastikan lintang selatan di Pulau Jawa selalu diawali tanda minus (-)
+            if not lat.startswith("-"):
+                lat = "-" + lat
+            return f"{lat},{lon}"
+        return k
+
     def bersihkan_baris_asli(teks):
         t = re.sub(r"[^A-Za-z0-9,\s]", "", teks)
         t = re.sub(r"^([A-Za-z0-9]{1,2}\s+)+", "", t.strip())
         t = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", t.strip())
         t = re.sub(r"\s+", " ", t).strip(" ,")
+        t = re.sub(r"\bKcamatan\b|\bKecamalan\b|\bKecarnatan\b", "Kecamatan", t, flags=re.IGNORECASE)
+        t = re.sub(r"Utaraj\b", "Utara,", t, flags=re.IGNORECASE)
+        t = re.sub(r"Timurj\b", "Timur,", t, flags=re.IGNORECASE)
+        t = re.sub(r"Baratj\b", "Barat,", t, flags=re.IGNORECASE)
+        t = re.sub(r"Selatanj\b", "Selatan,", t, flags=re.IGNORECASE)
+        t = re.sub(r"Tengahj\b", "Tengah,", t, flags=re.IGNORECASE)
         t = re.sub(r"Kota Semaran\b", "Kota Semarang", t, flags=re.IGNORECASE)
-        t = re.sub(r"Kecamalan", "Kecamatan", t, flags=re.IGNORECASE)
+        if any(k in t.lower() for k in ["indonesia", "yonesi", "ndonesi", "donesia"]):
+            return "Indonesia"
+        if "jawa tengah" in t.lower() or "awa tengah" in t.lower():
+            return "Jawa Tengah"
         return t
 
     try:
@@ -242,7 +293,7 @@ def baca_metadata_foto_asli(img_rgba):
             if not koord_hasil:
                 cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
                 if cari_koord:
-                    koord_hasil = cari_koord[0].replace(" ", "")
+                    koord_hasil = normalisasi_koordinat(cari_koord[0])
             if not alamat_hasil:
                 semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
                 idx_mulai = -1
@@ -250,23 +301,19 @@ def baca_metadata_foto_asli(img_rgba):
                     if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
                         idx_mulai = i + 1
                         break
-                    elif any(k in b.lower() for k in ["kecamatan", "kota ", "kabupaten"]):
+                    elif any(k in b.lower() for k in ["kecamatan", "kcamatan", "kota ", "kabupaten"]):
                         idx_mulai = i
                         break
                 if idx_mulai != -1 and len(semua_baris) > idx_mulai:
                     kandidat_baris = []
                     for raw_b in semua_baris[idx_mulai : idx_mulai + 3]:
                         clean_b = bersihkan_baris_asli(raw_b)
-                        if "indonesia" in clean_b.lower():
-                            clean_b = "Indonesia"
-                        elif "jawa tengah" in clean_b.lower():
-                            clean_b = "Jawa Tengah"
                         if len(clean_b) >= 4:
                             kandidat_baris.append(clean_b)
                     if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
                         if len(kandidat_baris) == 1:
                             kandidat_baris.extend(["Jawa Tengah", "Indonesia"])
-                        elif len(kandidat_baris) == 2 and "indonesia" not in kandidat_baris[1].lower():
+                        elif len(kandidat_baris) == 2 and kandidat_baris[1] != "Indonesia":
                             kandidat_baris.append("Indonesia")
                         alamat_hasil = kandidat_baris
             if jam_hasil and koord_hasil and alamat_hasil:
@@ -290,6 +337,8 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
 
     jam_asli = jam_asli or "09:20"
     koordinat_asli = koordinat_asli or "-6.9817887,110.4731881"
+    if not koordinat_asli.startswith("-"):
+        koordinat_asli = "-" + koordinat_asli
     baris_alamat = baris_alamat or ["Kecamatan Genuk, Kota Semarang", "Jawa Tengah", "Indonesia"]
     meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
 
@@ -308,10 +357,7 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     draw.rectangle([bx0, by0, bx1, by1], fill=(8, 8, 8, 162))
 
     ukuran_font = max(11, int(w * 0.034))
-    try:
-        font = ImageFont.truetype("DejaVuSans.ttf", ukuran_font)
-    except Exception:
-        font = ImageFont.load_default()
+    font = muat_font_roboto(ukuran_font)
 
     baris_teks = [f"{teks_hari_tanggal_baru} {jam_asli}", koordinat_asli] + baris_alamat
     margin_kiri = int(w * 0.016)
@@ -335,27 +381,40 @@ def deteksi_gaya_teks(halaman, teks_target):
                 for span in baris.get("spans", []):
                     if any(kata in span.get("text", "").lower() for kata in teks_target.lower().split()):
                         nama_font = span.get("font", "").lower()
-                        is_bold = ("bold" in nama_font) or bool(span.get("flags", 0) & 16)
-                        return span.get("size", 9.0), is_bold, span.get("origin")
-    return None, False, None
+                        is_bold = ("bold" in nama_font) or ("black" in nama_font) or bool(span.get("flags", 0) & 16)
+                        c_int = span.get("color", 0)
+                        r = ((c_int >> 16) & 255) / 255.0
+                        g = ((c_int >> 8) & 255) / 255.0
+                        b = (c_int & 255) / 255.0
+                        return span.get("size", 9.0), is_bold, span.get("origin"), (r, g, b)
+    return None, False, None, (0, 0, 0)
 
 def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_watermark_baru="Sabtu, 11 Januari 2025"):
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
     total_teks, total_gbr, xref_done = 0, 0, set()
     meta_terakhir = None
 
+    path_font_bold = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+    path_font_reg = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+
     for idx_hal, halaman in enumerate(doc):
         for teks_lama, teks_baru in daftar_ganti:
             if not teks_lama.strip():
                 continue
-            fs_asli, is_bold, origin_asli = deteksi_gaya_teks(halaman, teks_lama)
+            fs_asli, is_bold, origin_asli, warna_asli = deteksi_gaya_teks(halaman, teks_lama)
             for rect in halaman.search_for(teks_lama):
                 fs = fs_asli if fs_asli else max(7.5, (rect.y1 - rect.y0) * 0.78)
-                font_pakai = "hebo" if is_bold else "helv"
                 halaman.add_redact_annot(rect, fill=(1, 1, 1))
                 halaman.apply_redactions()
                 y_tulis = origin_asli[1] if (origin_asli and abs(origin_asli[1] - rect.y1) < 5) else (rect.y1 - 1.5)
-                halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname=font_pakai, color=(0, 0, 0))
+                try:
+                    if is_bold:
+                        halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname="dejavubold", fontfile=path_font_bold, color=warna_asli)
+                    else:
+                        halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname="dejavureg", fontfile=path_font_reg, color=warna_asli)
+                except Exception:
+                    font_pakai = "hebo" if is_bold else "helv"
+                    halaman.insert_text(fitz.Point(rect.x0, y_tulis), teks_baru, fontsize=fs, fontname=font_pakai, color=warna_asli)
                 total_teks += 1
 
         if edit_gambar and idx_hal > 0:
@@ -592,11 +651,7 @@ with main_area:
                 ukuran_font = max(20, int(min(image_wm.width, image_wm.height) * 0.028))
                 batas_karakter = int((image_wm.width * 0.80) / (ukuran_font * 0.55))
                 teks_watermark = f"{waktu}\n\n{chr(10).join(textwrap.wrap(lokasi, width=batas_karakter))}\n\n{koordinat}\n\n{chr(10).join(textwrap.wrap(kegiatan, width=batas_karakter))}"
-                try:
-                    req = urllib.request.Request("https://github.com/googlefonts/roboto/raw/main/src/hinted/Roboto-Medium.ttf", headers={'User-Agent': 'Mozilla/5.0'})
-                    font = ImageFont.truetype(io.BytesIO(urllib.request.urlopen(req, timeout=5).read()), ukuran_font)
-                except Exception:
-                    font = ImageFont.load_default()
+                font = muat_font_roboto(ukuran_font)
                 margin_x, margin_y, spacing_teks = int(image_wm.width * 0.05), int(image_wm.height * 0.05), int(ukuran_font * 0.3)
                 try:
                     bbox = draw.multiline_textbbox((0, 0), teks_watermark, font=font, spacing=spacing_teks)
