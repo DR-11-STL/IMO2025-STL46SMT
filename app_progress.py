@@ -839,7 +839,7 @@ st.markdown(f"<div style='display:flex; align-items:center; justify-content:spac
 
 kpi1, kpi2, kpi3, kpi4 = st.columns([1.45, 1, 1, 1.15])
 with kpi1:
-    st.markdown(f"<div class='glass-hero'><div style='font-size:0.72rem; font-weight:700; letter-spacing:0.8px; opacity:0.85;'>ENGINE TERPADU</div><div style='font-size:1.35rem; font-weight:800; margin:4px 0;'>IMOXdR Suite v2.0</div><div style='font-size:0.78rem; opacity:0.9;'>Glassmorphism UI • Live PDF Preview</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='glass-hero'><div style='font-size:0.72rem; font-weight:700; letter-spacing:0.8px; opacity:0.85;'>ENGINE TERPADU</div><div style='font-size:1.35rem; font-weight:800; margin:4px 0;'>IMOXdR Suite v2.0</div><div style='font-size:0.78rem; opacity:0.9;'></div></div>", unsafe_allow_html=True)
 with kpi2:
     st.markdown("<div class='glass-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar Aman</span></div>", unsafe_allow_html=True)
 with kpi3:
