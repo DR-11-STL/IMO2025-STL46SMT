@@ -784,7 +784,7 @@ if not st.session_state.login_sukses:
         <div class='login-brand-panel'>
             {logo_html}
             <h1>IMOXdR</h1>
-            <p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan berbasis Glassmorphism UI.</p>
+            <p></p>
             <div style='margin-top:24px;'>
                 <span class='feature-pill'>{SVG_ICONS['calendar']} Auto-Tanggal PDF</span>
                 <span class='feature-pill'>{SVG_ICONS['sparkles']} Hapus Kotak Pink</span>
@@ -796,7 +796,7 @@ if not st.session_state.login_sukses:
     with col_right:
         st.markdown("<div class='glass-card' style='padding: 38px 34px;'>", unsafe_allow_html=True)
         st.markdown(f"<div style='display:flex; align-items:center; margin-bottom:6px;'>{ikon_badge('shield')} <span style='font-size:1.35rem; font-weight:800;'>Masuk Ruang Kerja</span></div>", unsafe_allow_html=True)
-        st.caption("Autentikasi kredensial Sintel46 untuk mengakses seluruh modul otomasi.")
+        st.caption("KEEP THE TRACKS CLEAR AND THE WORKFLOW SHARP")
         st.write("")
         username = st.text_input("Username", placeholder="Masukkan username")
         password = st.text_input("Password", type="password", placeholder="••••••••")
@@ -835,13 +835,13 @@ with st.sidebar:
         st.rerun()
 
 # --- HEADER & KPI BENTO ---
-st.markdown(f"<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;'><div><h2 style='margin:0; font-weight:800; letter-spacing:-0.4px;'>Selamat Bekerja, dR</h2><span style='font-size:0.84rem; color:{TEXT_SECONDARY};'>Workspace Otomasi Laporan Perawatan Sintel Daop 4 Semarang</span></div></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;'><div><h2 style='margin:0; font-weight:800; letter-spacing:-0.4px;'>Selamat Bekerja, dR</h2><span style='font-size:0.84rem; color:{TEXT_SECONDARY};'></span></div></div>", unsafe_allow_html=True)
 
 kpi1, kpi2, kpi3, kpi4 = st.columns([1.45, 1, 1, 1.15])
 with kpi1:
     st.markdown(f"<div class='glass-hero'><div style='font-size:0.72rem; font-weight:700; letter-spacing:0.8px; opacity:0.85;'>ENGINE TERPADU</div><div style='font-size:1.35rem; font-weight:800; margin:4px 0;'>IMOXdR Suite v2.0</div><div style='font-size:0.78rem; opacity:0.9;'>Glassmorphism UI • Live PDF Preview</div></div>", unsafe_allow_html=True)
 with kpi2:
-    st.markdown("<div class='glass-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar Aman</span></div>", unsafe_allow_html=True)
+    st.markdown("<div class='glass-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar</span></div>", unsafe_allow_html=True)
 with kpi3:
     st.markdown("<div class='glass-card'><div class='kpi-title'>Auto-Tanggal</div><div class='kpi-value'>Sync</div><span class='kpi-badge-orange'>Font & Foto PDF</span></div>", unsafe_allow_html=True)
 with kpi4:
