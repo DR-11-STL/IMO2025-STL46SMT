@@ -835,7 +835,7 @@ with st.sidebar:
         st.rerun()
 
 # --- HEADER & KPI BENTO ---
-st.markdown(f"<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;'><div><h2 style='margin:0; font-weight:800; letter-spacing:-0.4px;'>Selamat Bekerja, dR</h2><span style='font-size:0.84rem; color:{TEXT_SECONDARY};'>Workspace Otomasi Laporan Perawatan Sintel Daop 4 Semarang</span></div></div>", unsafe_allow_html=True)
+st.markdown(f"<div style='display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;'><div><h2 style='margin:0; font-weight:800; letter-spacing:-0.4px;'>Selamat Bekerja, dR</h2><span style='font-size:0.84rem; color:{TEXT_SECONDARY};'></span></div></div>", unsafe_allow_html=True)
 
 kpi1, kpi2, kpi3, kpi4 = st.columns([1.45, 1, 1, 1.15])
 with kpi1:
