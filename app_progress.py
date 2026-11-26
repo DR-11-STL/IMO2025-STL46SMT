@@ -3,6 +3,8 @@ import streamlit.components.v1 as components
 import fitz  # PyMuPDF
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageEnhance, ImageOps
 import io
+import os
+import base64
 import zipfile
 import urllib.request
 import textwrap
@@ -12,47 +14,28 @@ import datetime
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
 
-st.set_page_config(page_title="PAGE IMO2025 X dR", page_icon="📑", layout="wide", initial_sidebar_state="collapsed")
-components.html("""
-<script>
-const doc = window.parent.document;
-const head = doc.head;
+@st.cache_data(show_spinner=False)
+def muat_ikon_aplikasi_base64():
+    kandidat_file = ["icon_imoxdr.png", "icon_imoxdr.jpg", "icon_imoxdr.jpeg", "bc434dcc.jpeg"]
+    for nama_file in kandidat_file:
+        if os.path.exists(nama_file):
+            try:
+                img = Image.open(nama_file).convert("RGBA").resize((512, 512), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format="PNG")
+                return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode("utf-8"), img
+            except Exception:
+                pass
+    return "", None
 
-// Buat ikon SVG kustom IMO2025 dR untuk thumbnail layar utama HP
-const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#282562"/>
-      <stop offset="100%" stop-color="#EC6923"/>
-    </linearGradient>
-  </defs>
-  <rect width="512" height="512" rx="115" fill="url(#g)"/>
-  <text x="50%" y="44%" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-weight="900" font-size="112">IMO</text>
-  <text x="50%" y="65%" text-anchor="middle" fill="#FFFFFF" font-family="sans-serif" font-weight="800" font-size="88">2025</text>
-  <text x="50%" y="84%" text-anchor="middle" fill="#FFD8C2" font-family="sans-serif" font-weight="700" font-size="64">dR</text>
-</svg>`;
-const iconUrl = "data:image/svg+xml;base64," + btoa(svgIcon);
+ICON_DATA_URL, ICON_PIL = muat_ikon_aplikasi_base64()
 
-const setMeta = (name, content) => {
-    let m = doc.querySelector(`meta[name="${name}"]`);
-    if (!m) { m = doc.createElement('meta'); m.name = name; head.appendChild(m); }
-    m.content = content;
-};
-const setLink = (rel, href) => {
-    let l = doc.querySelector(`link[rel="${rel}"]`);
-    if (!l) { l = doc.createElement('link'); l.rel = rel; head.appendChild(l); }
-    l.href = href;
-};
-
-setMeta("mobile-web-app-capable", "yes");
-setMeta("apple-mobile-web-app-capable", "yes");
-setMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
-setMeta("apple-mobile-web-app-title", "IMO2025 dR");
-setMeta("theme-color", "#0B0E17");
-setLink("apple-touch-icon", iconUrl);
-setLink("icon", iconUrl);
-</script>
-""", height=0, width=0)
+st.set_page_config(
+    page_title="IMOXdR",
+    page_icon=ICON_PIL if ICON_PIL is not None else "🟧",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
 if "login_sukses" not in st.session_state:
     st.session_state.login_sukses = False
@@ -160,24 +143,93 @@ hr {{border-top: 1px solid {BORDER_CARD} !important;}}
 </style>"""
 st.markdown(css_tema, unsafe_allow_html=True)
 
-components.html("""
+# Suntikkan Logo PNG "icon_imoxdr.png" & Nama Aplikasi "IMOXdR" ke Manifest HP serta Bersihkan Overlay
+components.html(f"""
 <script>
-const hideManageApp = () => {
-    try {
+const setupAppBrandAndClean = () => {{
+    try {{
         const doc = window.parent.document;
-        doc.querySelectorAll('div, button, a, span').forEach(el => {
-            if (el.textContent && el.textContent.trim() === 'Manage app') {
+        const head = doc.head;
+
+        doc.querySelectorAll('div, button, a, span').forEach(el => {{
+            if (el.textContent && el.textContent.trim() === 'Manage app') {{
                 let target = el.closest('div[class*="profile"], div[class*="viewer"], div[class*="Status"]') || el.parentElement;
-                if (target) {
+                if (target) {{
                     target.style.setProperty('display', 'none', 'important');
                     target.style.setProperty('visibility', 'hidden', 'important');
-                }
-            }
-        });
-    } catch (e) {}
-};
-hideManageApp();
-setInterval(hideManageApp, 800);
+                }}
+            }}
+        }});
+
+        if (!doc.getElementById('imoxdr-manifest-injected')) {{
+            let pngDataUrl = "{ICON_DATA_URL}";
+
+            if (!pngDataUrl) {{
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#08080A';
+                ctx.fillRect(0, 0, 512, 512);
+                ctx.textBaseline = 'middle';
+                ctx.font = '900 220px sans-serif';
+                ctx.fillStyle = '#282562';
+                ctx.strokeStyle = '#EC6923';
+                ctx.lineWidth = 8;
+                ctx.strokeText('dR', 110, 260);
+                ctx.fillText('dR', 110, 260);
+                pngDataUrl = canvas.toDataURL('image/png');
+            }}
+
+            doc.title = 'IMOXdR';
+            doc.querySelectorAll('link[rel="manifest"], link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(el => el.remove());
+
+            const addLink = (rel, href, sizes = '') => {{
+                const l = doc.createElement('link');
+                l.rel = rel;
+                l.href = href;
+                if (sizes) l.sizes = sizes;
+                head.appendChild(l);
+            }};
+            const addMeta = (name, content) => {{
+                let m = doc.querySelector(`meta[name="${{name}}"]`);
+                if (!m) {{ m = doc.createElement('meta'); m.name = name; head.appendChild(m); }}
+                m.content = content;
+            }};
+
+            addLink('icon', pngDataUrl, '512x512');
+            addLink('apple-touch-icon', pngDataUrl, '512x512');
+            addMeta('application-name', 'IMOXdR');
+            addMeta('apple-mobile-web-app-title', 'IMOXdR');
+            addMeta('mobile-web-app-capable', 'yes');
+            addMeta('apple-mobile-web-app-capable', 'yes');
+            addMeta('apple-mobile-web-app-status-bar-style', 'black-translucent');
+            addMeta('theme-color', '#08080A');
+
+            const manifestObj = {{
+                name: "IMOXdR",
+                short_name: "IMOXdR",
+                start_url: window.parent.location.href,
+                display: "standalone",
+                background_color: "#08080A",
+                theme_color: "#08080A",
+                icons: [
+                    {{ src: pngDataUrl, sizes: "192x192", type: "image/png", purpose: "any maskable" }},
+                    {{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }}
+                ]
+            }};
+            const manifestBlob = new Blob([JSON.stringify(manifestObj)], {{ type: 'application/manifest+json' }});
+            const manifestUrl = URL.createObjectURL(manifestBlob);
+            const manifestLink = doc.createElement('link');
+            manifestLink.id = 'imoxdr-manifest-injected';
+            manifestLink.rel = 'manifest';
+            manifestLink.href = manifestUrl;
+            head.appendChild(manifestLink);
+        }}
+    }} catch (e) {{}}
+}};
+setupAppBrandAndClean();
+setInterval(setupAppBrandAndClean, 800);
 </script>
 """, height=0, width=0)
 
@@ -288,7 +340,6 @@ def baca_metadata_foto_asli(img_rgba):
 
     def normalisasi_koordinat(raw_k):
         k = raw_k.strip()
-        # Pertahankan pemisah asli (koma atau spasi tunggal)
         if "," in k:
             bagian = [p.strip() for p in k.split(",") if p.strip()]
             sep = ","
@@ -308,7 +359,6 @@ def baca_metadata_foto_asli(img_rgba):
         t = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", t.strip())
         t = re.sub(r"\s+", " ", t).strip(" ,.")
 
-        # Koreksi typo OCR awalan & wilayah Jawa Tengah / Daop 4
         kamus_perbaikan = [
             (r"\bKcamatan\b|\bKecamalan\b|\bKecarnatan\b|\bKecamtan\b", "Kecamatan"),
             (r"\bKabupalen\b|\bKabupatan\b|\bKabupafen\b", "Kabupaten"),
@@ -339,7 +389,6 @@ def baca_metadata_foto_asli(img_rgba):
         for pola, ganti in kamus_perbaikan:
             t = re.sub(pola, ganti, t, flags=re.IGNORECASE)
 
-        # Pastikan selalu ada koma pemisah antara Kecamatan ... dan Kabupaten/Kota ...
         t = re.sub(r"(Kecamatan\s+[A-Za-z\s]+?)\s+(Kabupaten|Kota)\b", r"\1, \2", t, flags=re.IGNORECASE)
         t = re.sub(r",\s*,", ",", t)
 
@@ -361,12 +410,10 @@ def baca_metadata_foto_asli(img_rgba):
         for gbr_uji in kandidat_gambar:
             teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
             if not jam_hasil:
-                # Tangkap format jam 13:55 maupun 13.55
                 cari_jam = re.findall(r"\b([0-2]?\d[:\.][0-5]\d)\b", teks_ocr)
                 if cari_jam:
                     jam_hasil = cari_jam[0]
             if not koord_hasil:
-                # Tangkap koordinat dengan koma (-6.97,110.41) maupun spasi (-7.14375561 110.91660316)
                 cari_koord = re.findall(r"(-?\d+\.\d+(?:\s*,\s*|\s+)\d+\.\d+)", teks_ocr)
                 if cari_koord:
                     koord_hasil = normalisasi_koordinat(cari_koord[0])
@@ -387,7 +434,6 @@ def baca_metadata_foto_asli(img_rgba):
                         if len(clean_b) >= 4:
                             kandidat_baris.append(clean_b)
                     if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "grobogan", "toroh", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
-                        # Jika format langsung Kecamatan ..., Kabupaten ... (kode pos) -> baris berikutnya langsung Indonesia
                         if re.search(r"\b\d{5}\b", kandidat_baris[0]):
                             kandidat_baris = [kandidat_baris[0], "Indonesia"]
                         elif len(kandidat_baris) == 1:
@@ -418,7 +464,6 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     baris_alamat = baris_alamat or ["Kecamatan Genuk, Kota Semarang", "Jawa Tengah", "Indonesia"]
     meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
 
-    # Hitung ukuran font Roboto & dimensi kotak hitam pekat presisi sesuai panjang teks
     ukuran_font = max(12, int(w * 0.033))
     font = muat_font_roboto(ukuran_font)
     baris_teks = [f"{teks_hari_tanggal_baru} {jam_asli}", koordinat_asli] + baris_alamat
@@ -437,7 +482,6 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
         if lw > lebar_maks_teks:
             lebar_maks_teks = lw
 
-    # Area tambalan menutupi watermark lama sekaligus menyesuaikan panjang teks baru
     bx0, by1 = 0, int(h * 0.992)
     tinggi_kotak = (len(baris_teks) * spasi_baris) + (pad_y * 2)
     by0 = max(int(h * 0.68), min(int(h * 0.72), by1 - tinggi_kotak))
@@ -454,14 +498,12 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     mask = mask.filter(ImageFilter.GaussianBlur(radius=pad_blur))
     img.paste(tambalan_alami, (bx0, by0), mask)
 
-    # Kotak latar hitam pekat tegas (alpha=215) seperti Timemark asli
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 215))
 
     y_teks = by0 + pad_y
     for baris in baris_teks:
-        # Bayangan halus 1px agar huruf Roboto putih tampil super tajam & tebal tanpa berbayang
         draw.text((bx0 + pad_x + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 230))
         draw.text((bx0 + pad_x, y_teks), baris, font=font, fill=(255, 255, 255, 255))
         y_teks += spasi_baris
@@ -528,7 +570,6 @@ def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_wat
                 p_kanan_atas = pil_cek.getpixel((w_img - 6, 5))
                 if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
                     continue
-                # Tingkatkan ketajaman gambar sedikit agar huruf Roboto sangat crisp di dalam PDF
                 img_hasil, meta_terakhir = patch_watermark_gambar(pil_cek, teks_watermark_baru, meta_terakhir)
                 img_hasil = ImageEnhance.Sharpness(img_hasil).enhance(1.12)
                 buf = io.BytesIO()
@@ -548,7 +589,8 @@ if not st.session_state.login_sukses:
     st.write("")
     _, col_left, col_right, _ = st.columns([0.5, 2.3, 2.1, 0.5], gap="large")
     with col_left:
-        st.markdown("""<div class='login-brand-panel'><h1>IMO2025 📑 dR</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
+        logo_html = f"<img src='{ICON_DATA_URL}' style='width:68px; height:68px; border-radius:16px; border:1.5px solid rgba(255,255,255,0.28); margin-bottom:14px; box-shadow:0 6px 18px rgba(0,0,0,0.45);'/>" if ICON_DATA_URL else ""
+        st.markdown(f"""<div class='login-brand-panel'>{logo_html}<h1>IMOXdR 📑</h1><p>Ruang kerja digital otomasi dokumen perawatan prasarana, pembersihan anotasi, dan sinkronisasi laporan.</p><div style='margin-top:24px;'><span class='feature-pill'>📅 Auto-Tanggal PDF</span><span class='feature-pill'>🧹 Hapus Kotak Pink</span><span class='feature-pill'>🚀 Jahit Foto 0-50-100%</span><span class='feature-pill'>📸 Watermark</span></div></div>""", unsafe_allow_html=True)
     with col_right:
         st.markdown("<div class='bento-card' style='padding: 36px 32px;'>", unsafe_allow_html=True)
         st.markdown("### Masuk Ruang Kerja 👋")
@@ -567,8 +609,11 @@ if not st.session_state.login_sukses:
     st.stop()
 
 with st.sidebar:
-    st.markdown("<p class='title-kai'>IMO2025 📑 dR</p>", unsafe_allow_html=True)
-    st.caption("Automation Workspace Suite")
+    if ICON_DATA_URL:
+        st.markdown(f"<div style='display:flex; align-items:center; gap:12px;'><img src='{ICON_DATA_URL}' style='width:46px; height:46px; border-radius:12px; border:1px solid rgba(255,255,255,0.25);'/><div><p class='title-kai' style='font-size:1.75rem;'>IMOXdR</p><span style='font-size:0.75rem; color:{TEXT_SECONDARY};'>Automation Workspace</span></div></div>", unsafe_allow_html=True)
+    else:
+        st.markdown("<p class='title-kai'>IMOXdR 📑</p>", unsafe_allow_html=True)
+        st.caption("Automation Workspace Suite")
     st.divider()
     pilihan_menu = st.radio("Mode Aplikasi", [
         "📅 Auto-Ubah Tanggal PDF & Foto",
@@ -590,7 +635,7 @@ st.markdown("### Selamat Bekerja dR 👋")
 
 kpi1, kpi2, kpi3, kpi4 = st.columns([1.4, 1, 1, 1.2])
 with kpi1:
-    st.markdown("<div class='bento-hero'><div style='font-size:0.76rem; font-weight:700;'>ENGINE TERPADU</div><div style='font-size:1.3rem; font-weight:800; margin:4px 0;'>IMO2025 All-in-One</div><div style='font-size:0.76rem;'>4 Modul Otomasi Dokumen</div></div>", unsafe_allow_html=True)
+    st.markdown("<div class='bento-hero'><div style='font-size:0.76rem; font-weight:700;'>ENGINE TERPADU</div><div style='font-size:1.3rem; font-weight:800; margin:4px 0;'>IMOXdR All-in-One</div><div style='font-size:0.76rem;'>4 Modul Otomasi Dokumen</div></div>", unsafe_allow_html=True)
 with kpi2:
     st.markdown("<div class='bento-card'><div class='kpi-title'>Filter Anotasi</div><div class='kpi-value'>Smart</div><span class='kpi-badge-orange'>Foto Besar Aman</span></div>", unsafe_allow_html=True)
 with kpi3:
