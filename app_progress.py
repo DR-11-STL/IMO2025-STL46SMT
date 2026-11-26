@@ -13,6 +13,7 @@ import datetime
 
 USER_VALID = "Sintel46"
 PASS_VALID = "IMO2025."
+RAW_ICON_URL = "https://raw.githubusercontent.com/DR-11-STL/IMO2025-SINTEL46SMT/main/icon_imoxdr.png"
 
 @st.cache_data(show_spinner=False)
 def muat_ikon_aplikasi_base64():
@@ -143,7 +144,7 @@ hr {{border-top: 1px solid {BORDER_CARD} !important;}}
 </style>"""
 st.markdown(css_tema, unsafe_allow_html=True)
 
-# Suntikkan Logo PNG "icon_imoxdr.png" & Nama Aplikasi "IMOXdR" ke Manifest HP serta Bersihkan Overlay
+# Suntikkan URL Asli GitHub RAW untuk Logo "dR" & Nama "IMOXdR" agar terbaca server WebAPK Android
 components.html(f"""
 <script>
 const setupAppBrandAndClean = () => {{
@@ -162,26 +163,9 @@ const setupAppBrandAndClean = () => {{
         }});
 
         if (!doc.getElementById('imoxdr-manifest-injected')) {{
-            let pngDataUrl = "{ICON_DATA_URL}";
-
-            if (!pngDataUrl) {{
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#08080A';
-                ctx.fillRect(0, 0, 512, 512);
-                ctx.textBaseline = 'middle';
-                ctx.font = '900 220px sans-serif';
-                ctx.fillStyle = '#282562';
-                ctx.strokeStyle = '#EC6923';
-                ctx.lineWidth = 8;
-                ctx.strokeText('dR', 110, 260);
-                ctx.fillText('dR', 110, 260);
-                pngDataUrl = canvas.toDataURL('image/png');
-            }}
-
+            const iconUrl = "{RAW_ICON_URL}";
             doc.title = 'IMOXdR';
+
             doc.querySelectorAll('link[rel="manifest"], link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(el => el.remove());
 
             const addLink = (rel, href, sizes = '') => {{
@@ -197,8 +181,8 @@ const setupAppBrandAndClean = () => {{
                 m.content = content;
             }};
 
-            addLink('icon', pngDataUrl, '512x512');
-            addLink('apple-touch-icon', pngDataUrl, '512x512');
+            addLink('icon', iconUrl, '512x512');
+            addLink('apple-touch-icon', iconUrl, '512x512');
             addMeta('application-name', 'IMOXdR');
             addMeta('apple-mobile-web-app-title', 'IMOXdR');
             addMeta('mobile-web-app-capable', 'yes');
@@ -214,16 +198,15 @@ const setupAppBrandAndClean = () => {{
                 background_color: "#08080A",
                 theme_color: "#08080A",
                 icons: [
-                    {{ src: pngDataUrl, sizes: "192x192", type: "image/png", purpose: "any maskable" }},
-                    {{ src: pngDataUrl, sizes: "512x512", type: "image/png", purpose: "any maskable" }}
+                    {{ src: iconUrl, sizes: "192x192", type: "image/png", purpose: "any" }},
+                    {{ src: iconUrl, sizes: "512x512", type: "image/png", purpose: "any" }}
                 ]
             }};
-            const manifestBlob = new Blob([JSON.stringify(manifestObj)], {{ type: 'application/manifest+json' }});
-            const manifestUrl = URL.createObjectURL(manifestBlob);
+            const manifestBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(manifestObj))));
             const manifestLink = doc.createElement('link');
             manifestLink.id = 'imoxdr-manifest-injected';
             manifestLink.rel = 'manifest';
-            manifestLink.href = manifestUrl;
+            manifestLink.href = 'data:application/manifest+json;base64,' + manifestBase64;
             head.appendChild(manifestLink);
         }}
     }} catch (e) {{}}
