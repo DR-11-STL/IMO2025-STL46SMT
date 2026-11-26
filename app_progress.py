@@ -215,7 +215,7 @@ def proses_dokumen(pdf_file, data_rangkaian):
                 item["file"].seek(0)
                 img_square = crop_center_square(Image.open(item["file"]))
                 img_byte_arr = io.BytesIO()
-                img_square.save(img_byte_arr, format='JPEG', quality=90)
+                img_square.save(img_byte_arr, format='JPEG', quality=92, subsampling=0)
                 x0 = mulai_x + i * (lebar_gambar + spasi)
                 y0 = y_pos + 15
                 halaman_baru.insert_image(fitz.Rect(x0, y0, x0 + lebar_gambar, y0 + tinggi_gambar), stream=img_byte_arr.getvalue())
@@ -242,33 +242,67 @@ def deteksi_tanggal_otomatis_pdf(pdf_bytes):
 
 def baca_metadata_foto_asli(img_rgba):
     w, h = img_rgba.size
-    bx0, by0 = 0, int(h * 0.715)
-    bx1, by1 = int(w * 0.90), int(h * 0.990)
+    bx0, by0 = 0, int(h * 0.710)
+    bx1, by1 = int(w * 0.92), int(h * 0.992)
     jam_hasil, koord_hasil, alamat_hasil = None, None, None
 
     def normalisasi_koordinat(raw_k):
-        k = raw_k.replace(" ", "")
-        bagian = k.split(",")
+        k = raw_k.strip()
+        # Pertahankan pemisah asli (koma atau spasi tunggal)
+        if "," in k:
+            bagian = [p.strip() for p in k.split(",") if p.strip()]
+            sep = ","
+        else:
+            bagian = [p.strip() for p in k.split() if p.strip()]
+            sep = " "
         if len(bagian) == 2:
             lat, lon = bagian[0], bagian[1]
-            # Pastikan lintang selatan di Pulau Jawa selalu diawali tanda minus (-)
             if not lat.startswith("-"):
                 lat = "-" + lat
-            return f"{lat},{lon}"
+            return f"{lat}{sep}{lon}"
         return k
 
     def bersihkan_baris_asli(teks):
-        t = re.sub(r"[^A-Za-z0-9,\s]", "", teks)
+        t = re.sub(r"[^A-Za-z0-9,\.\-\s]", "", teks)
         t = re.sub(r"^([A-Za-z0-9]{1,2}\s+)+", "", t.strip())
         t = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", t.strip())
-        t = re.sub(r"\s+", " ", t).strip(" ,")
-        t = re.sub(r"\bKcamatan\b|\bKecamalan\b|\bKecarnatan\b", "Kecamatan", t, flags=re.IGNORECASE)
-        t = re.sub(r"Utaraj\b", "Utara,", t, flags=re.IGNORECASE)
-        t = re.sub(r"Timurj\b", "Timur,", t, flags=re.IGNORECASE)
-        t = re.sub(r"Baratj\b", "Barat,", t, flags=re.IGNORECASE)
-        t = re.sub(r"Selatanj\b", "Selatan,", t, flags=re.IGNORECASE)
-        t = re.sub(r"Tengahj\b", "Tengah,", t, flags=re.IGNORECASE)
-        t = re.sub(r"Kota Semaran\b", "Kota Semarang", t, flags=re.IGNORECASE)
+        t = re.sub(r"\s+", " ", t).strip(" ,.")
+
+        # Koreksi typo OCR awalan & wilayah Jawa Tengah / Daop 4
+        kamus_perbaikan = [
+            (r"\bKcamatan\b|\bKecamalan\b|\bKecarnatan\b|\bKecamtan\b", "Kecamatan"),
+            (r"\bKabupalen\b|\bKabupatan\b|\bKabupafen\b", "Kabupaten"),
+            (r"Utaraj\b", "Utara,"),
+            (r"Timurj\b", "Timur,"),
+            (r"Baratj\b", "Barat,"),
+            (r"Selatanj\b", "Selatan,"),
+            (r"Tengahj\b", "Tengah,"),
+            (r"Torohj\b", "Toroh,"),
+            (r"Genukj\b", "Genuk,"),
+            (r"Pedurunganj\b", "Pedurungan,"),
+            (r"Gayamsarij\b", "Gayamsari,"),
+            (r"Kota Semaran\b|\bSemaran\b", "Kota Semarang"),
+            (r"\bGroboganj\b|\bGrobogam\b", "Grobogan"),
+            (r"\bPurwodadij\b|\bPurwadadi\b", "Purwodadi"),
+            (r"\bDemakj\b", "Demak"),
+            (r"\bKendalj\b", "Kendal"),
+            (r"\bBatangj\b", "Batang"),
+            (r"\bPekalonganj\b", "Pekalongan"),
+            (r"\bTegalj\b", "Tegal"),
+            (r"\bKudusj\b", "Kudus"),
+            (r"\bPatij\b", "Pati"),
+            (r"\bJeparaj\b", "Jepara"),
+            (r"\bBloraj\b", "Blora"),
+            (r"\bBoyolalij\b", "Boyolali"),
+            (r"\bSalatigaj\b", "Salatiga"),
+        ]
+        for pola, ganti in kamus_perbaikan:
+            t = re.sub(pola, ganti, t, flags=re.IGNORECASE)
+
+        # Pastikan selalu ada koma pemisah antara Kecamatan ... dan Kabupaten/Kota ...
+        t = re.sub(r"(Kecamatan\s+[A-Za-z\s]+?)\s+(Kabupaten|Kota)\b", r"\1, \2", t, flags=re.IGNORECASE)
+        t = re.sub(r",\s*,", ",", t)
+
         if any(k in t.lower() for k in ["indonesia", "yonesi", "ndonesi", "donesia"]):
             return "Indonesia"
         if "jawa tengah" in t.lower() or "awa tengah" in t.lower():
@@ -280,25 +314,27 @@ def baca_metadata_foto_asli(img_rgba):
         crop_dasar = img_rgba.crop((bx0, by0, bx1, by1)).convert("L")
         crop_besar = crop_dasar.resize((crop_dasar.width * 3, crop_dasar.height * 3), Image.Resampling.LANCZOS)
         kandidat_gambar = [
-            ImageEnhance.Contrast(crop_besar).enhance(2.2),
+            ImageEnhance.Contrast(crop_besar).enhance(2.3),
             crop_besar.point(lambda p: 255 if p > 185 else 0),
             crop_besar.point(lambda p: 255 if p > 155 else 0),
         ]
         for gbr_uji in kandidat_gambar:
             teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
             if not jam_hasil:
-                cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
+                # Tangkap format jam 13:55 maupun 13.55
+                cari_jam = re.findall(r"\b([0-2]?\d[:\.][0-5]\d)\b", teks_ocr)
                 if cari_jam:
                     jam_hasil = cari_jam[0]
             if not koord_hasil:
-                cari_koord = re.findall(r"(-?\d+\.\d+\s*,\s*\d+\.\d+)", teks_ocr)
+                # Tangkap koordinat dengan koma (-6.97,110.41) maupun spasi (-7.14375561 110.91660316)
+                cari_koord = re.findall(r"(-?\d+\.\d+(?:\s*,\s*|\s+)\d+\.\d+)", teks_ocr)
                 if cari_koord:
                     koord_hasil = normalisasi_koordinat(cari_koord[0])
             if not alamat_hasil:
                 semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
                 idx_mulai = -1
                 for i, b in enumerate(semua_baris):
-                    if re.search(r"-?\d+\.\d+\s*,\s*\d+\.\d+", b):
+                    if re.search(r"-?\d+\.\d+(?:\s*,\s*|\s+)\d+\.\d+", b):
                         idx_mulai = i + 1
                         break
                     elif any(k in b.lower() for k in ["kecamatan", "kcamatan", "kota ", "kabupaten"]):
@@ -310,8 +346,11 @@ def baca_metadata_foto_asli(img_rgba):
                         clean_b = bersihkan_baris_asli(raw_b)
                         if len(clean_b) >= 4:
                             kandidat_baris.append(clean_b)
-                    if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
-                        if len(kandidat_baris) == 1:
+                    if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "grobogan", "toroh", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
+                        # Jika format langsung Kecamatan ..., Kabupaten ... (kode pos) -> baris berikutnya langsung Indonesia
+                        if re.search(r"\b\d{5}\b", kandidat_baris[0]):
+                            kandidat_baris = [kandidat_baris[0], "Indonesia"]
+                        elif len(kandidat_baris) == 1:
                             kandidat_baris.extend(["Jawa Tengah", "Indonesia"])
                         elif len(kandidat_baris) == 2 and kandidat_baris[1] != "Indonesia":
                             kandidat_baris.append("Indonesia")
@@ -325,9 +364,6 @@ def baca_metadata_foto_asli(img_rgba):
 def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     img = img_pil.convert("RGBA")
     w, h = img.size
-    bx0, by0 = 0, int(h * 0.720)
-    bx1, by1 = int(w * 0.885), int(h * 0.985)
-    box_w, box_h = bx1 - bx0, by1 - by0
 
     jam_asli, koordinat_asli, baris_alamat = baca_metadata_foto_asli(img)
     if fallback_meta:
@@ -342,32 +378,52 @@ def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
     baris_alamat = baris_alamat or ["Kecamatan Genuk, Kota Semarang", "Jawa Tengah", "Indonesia"]
     meta_terbaca = {"jam": jam_asli, "koord": koordinat_asli, "alamat": baris_alamat}
 
+    # Hitung ukuran font Roboto & dimensi kotak hitam pekat presisi sesuai panjang teks
+    ukuran_font = max(12, int(w * 0.033))
+    font = muat_font_roboto(ukuran_font)
+    baris_teks = [f"{teks_hari_tanggal_baru} {jam_asli}", koordinat_asli] + baris_alamat
+    spasi_baris = int(ukuran_font * 1.28)
+    pad_x = max(8, int(w * 0.015))
+    pad_y = max(6, int(h * 0.010))
+
+    dummy_draw = ImageDraw.Draw(img)
+    lebar_maks_teks = 0
+    for baris in baris_teks:
+        try:
+            bbox = dummy_draw.textbbox((0, 0), baris, font=font)
+            lw = bbox[2] - bbox[0]
+        except Exception:
+            lw = int(len(baris) * ukuran_font * 0.54)
+        if lw > lebar_maks_teks:
+            lebar_maks_teks = lw
+
+    # Area tambalan menutupi watermark lama sekaligus menyesuaikan panjang teks baru
+    bx0, by1 = 0, int(h * 0.992)
+    tinggi_kotak = (len(baris_teks) * spasi_baris) + (pad_y * 2)
+    by0 = max(int(h * 0.68), min(int(h * 0.72), by1 - tinggi_kotak))
+    bx1 = min(int(w * 0.94), max(int(w * 0.86), bx0 + lebar_maks_teks + (pad_x * 2)))
+    box_w, box_h = bx1 - bx0, by1 - by0
+
     strip_atas = img.crop((bx0, max(0, by0 - 5), bx1, max(1, by0 - 1))).resize((box_w, box_h), Image.Resampling.BICUBIC)
     strip_kanan = img.crop((min(w - 5, bx1 + 1), by0, min(w, bx1 + 5), by1)).resize((box_w, box_h), Image.Resampling.BICUBIC)
     tambalan_alami = Image.blend(strip_atas, strip_kanan, alpha=0.5).filter(ImageFilter.GaussianBlur(radius=max(3, int(box_h * 0.04))))
 
     mask = Image.new("L", (box_w, box_h), 255)
-    pad = max(4, int(box_h * 0.05))
-    ImageDraw.Draw(mask).rectangle([pad, pad, box_w - pad, box_h - pad], fill=255)
-    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad))
+    pad_blur = max(3, int(box_h * 0.04))
+    ImageDraw.Draw(mask).rectangle([pad_blur, pad_blur, box_w - pad_blur, box_h - pad_blur], fill=255)
+    mask = mask.filter(ImageFilter.GaussianBlur(radius=pad_blur))
     img.paste(tambalan_alami, (bx0, by0), mask)
 
+    # Kotak latar hitam pekat tegas (alpha=215) seperti Timemark asli
     overlay = Image.new("RGBA", img.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
-    draw.rectangle([bx0, by0, bx1, by1], fill=(8, 8, 8, 162))
+    draw.rectangle([bx0, by0, bx1, by1], fill=(12, 12, 12, 215))
 
-    ukuran_font = max(11, int(w * 0.034))
-    font = muat_font_roboto(ukuran_font)
-
-    baris_teks = [f"{teks_hari_tanggal_baru} {jam_asli}", koordinat_asli] + baris_alamat
-    margin_kiri = int(w * 0.016)
-    y_teks = by0 + int(box_h * 0.05)
-    spasi_baris = int(ukuran_font * 1.32)
-
+    y_teks = by0 + pad_y
     for baris in baris_teks:
-        for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)]:
-            draw.text((margin_kiri + ox, y_teks + oy), baris, font=font, fill=(0, 0, 0, 210))
-        draw.text((margin_kiri, y_teks), baris, font=font, fill=(255, 255, 255, 255))
+        # Bayangan halus 1px agar huruf Roboto putih tampil super tajam & tebal tanpa berbayang
+        draw.text((bx0 + pad_x + 1, y_teks + 1), baris, font=font, fill=(0, 0, 0, 230))
+        draw.text((bx0 + pad_x, y_teks), baris, font=font, fill=(255, 255, 255, 255))
         y_teks += spasi_baris
 
     return Image.alpha_composite(img, overlay).convert("RGB"), meta_terbaca
@@ -432,9 +488,11 @@ def proses_multi_tanggal_pdf(pdf_bytes, daftar_ganti, edit_gambar=True, teks_wat
                 p_kanan_atas = pil_cek.getpixel((w_img - 6, 5))
                 if all(c > 245 for c in p_kiri_atas) and all(c > 245 for c in p_kanan_atas):
                     continue
+                # Tingkatkan ketajaman gambar sedikit agar huruf Roboto sangat crisp di dalam PDF
                 img_hasil, meta_terakhir = patch_watermark_gambar(pil_cek, teks_watermark_baru, meta_terakhir)
+                img_hasil = ImageEnhance.Sharpness(img_hasil).enhance(1.12)
                 buf = io.BytesIO()
-                img_hasil.save(buf, format="JPEG", quality=88)
+                img_hasil.save(buf, format="JPEG", quality=95, subsampling=0)
                 halaman.replace_image(xref, stream=buf.getvalue())
                 total_gbr += 1
 
@@ -661,14 +719,12 @@ with main_area:
                 lebar_garis = max(5, int(ukuran_font * 0.25))
                 draw.rectangle([margin_x, margin_y, margin_x + lebar_garis, margin_y + tinggi_teks], fill="blue")
                 text_x = margin_x + lebar_garis + int(ukuran_font * 0.6)
-                for ax in [-2, -1, 0, 1, 2]:
-                    for ay in [-2, -1, 0, 1, 2]:
-                        draw.multiline_text((text_x + ax, margin_y + ay), teks_watermark, font=font, fill="black", spacing=spacing_teks)
+                draw.multiline_text((text_x + 1, margin_y + 1), teks_watermark, font=font, fill="black", spacing=spacing_teks)
                 draw.multiline_text((text_x, margin_y), teks_watermark, font=font, fill="white", spacing=spacing_teks)
                 st.session_state.riwayat_proses.insert(0, {"waktu": "Baru saja", "modul": "Watermark Foto", "detail": kegiatan[:26]})
                 st.image(image_wm, caption="Hasil Jahitan Watermark", use_container_width=True)
                 buf_img = io.BytesIO()
-                image_wm.save(buf_img, format="JPEG", quality=92)
+                image_wm.save(buf_img, format="JPEG", quality=95, subsampling=0)
                 st.download_button("⬇️ Unduh Foto", data=buf_img.getvalue(), file_name="Foto_Watermark.jpg", mime="image/jpeg", use_container_width=True)
         st.markdown("</div>", unsafe_allow_html=True)
 
