@@ -527,113 +527,136 @@ def baca_metadata_foto_asli(img_rgba):
     bx1, by1 = int(w * 0.92), int(h * 0.992)
     jam_hasil, koord_hasil, alamat_hasil = None, None, None
 
+    # Database Referensi Wilayah Koridor Daop 4 Semarang & Sekitarnya (Anti-Typo Mutlak)
+    DAFTAR_KECAMATAN = [
+        "Semarang Utara", "Semarang Timur", "Semarang Tengah", "Semarang Selatan",
+        "Semarang Barat", "Genuk", "Pedurungan", "Gayamsari", "Candisari",
+        "Gajahmungkur", "Tembalang", "Banyumanik", "Gunungpati", "Mijen", "Ngaliyan", "Tugu",
+        "Mranggen", "Karangawen", "Gubug", "Tegowanu", "Godong", "Purwodadi", "Toroh",
+        "Geyer", "Pulokulon", "Kradenan", "Gabus", "Ngaringan", "Wirosari", "Tawangharjo",
+        "Grobogan", "Brati", "Klambu", "Penawangan", "Tanggungharjo", "Kedungjati",
+        "Sayung", "Karangtengah", "Demak", "Wonosalam", "Dempet", "Gajah", "Karanganyar",
+        "Kaliwungu", "Brangsong", "Kendal", "Patebon", "Cepiring", "Gemuh", "Weleri", "Rowosari",
+        "Gringsing", "Banyupuluh", "Limpung", "Subah", "Tulis", "Kandeman", "Batang",
+        "Pekalongan Timur", "Pekalongan Barat", "Pekalongan Utara", "Pekalongan Selatan",
+        "Wiradesa", "Tirto", "Sragi", "Comal", "Ulujami", "Petarukan", "Taman", "Pemalang",
+        "Suradadi", "Kramat", "Tegal Timur", "Tegal Barat", "Tegal Selatan", "Margadana",
+        "Kudus", "Jati", "Undaan", "Bae", "Gebog", "Dawe", "Mejobo", "Jekulo", "Kaliwungu",
+        "Pati", "Margorejo", "Gembong", "Tlogowungu", "Wedarijaksa", "Juana", "Juwana", "Batangan",
+        "Kaliori", "Rembang", "Lasem", "Sulang", "Sumber", "Bulu", "Gunem", "Pamotan",
+        "Cepu", "Sambong", "Jiken", "Jepon", "Blora", "Tunjungan", "Banjarejo", "Ngawen", "Kunduran", "Todanan",
+        "Ungaran Barat", "Ungaran Timur", "Bergas", "Pringapus", "Bawen", "Ambarawa", "Jambu", "Banyuputih", "Tuntang", "Bringin", "Bancak", "Pabelan", "Tengaran", "Susukan", "Kaliwungu", "Suruh",
+        "Sidorejo", "Tingkir", "Argomulyo", "Sidomukti"
+    ]
+
+    DAFTAR_KOTA_KAB = [
+        "Kota Semarang", "Kabupaten Semarang", "Kabupaten Demak", "Kabupaten Grobogan",
+        "Kabupaten Kendal", "Kabupaten Batang", "Kota Pekalongan", "Kabupaten Pekalongan",
+        "Kabupaten Pemalang", "Kota Tegal", "Kabupaten Tegal", "Kabupaten Brebes",
+        "Kabupaten Kudus", "Kabupaten Pati", "Kabupaten Jepara", "Kabupaten Rembang",
+        "Kabupaten Blora", "Kota Salatiga", "Kabupaten Boyolali", "Kota Surakarta"
+    ]
+
     def normalisasi_koordinat(raw_k):
-        k = raw_k.strip()
-        if "," in k:
-            bagian = [p.strip() for p in k.split(",") if p.strip()]
-            sep = ","
-        else:
-            bagian = [p.strip() for p in k.split() if p.strip()]
-            sep = " "
-        if len(bagian) == 2:
-            lat, lon = bagian[0], bagian[1]
+        angka = re.findall(r"-?\d+\.\d+", raw_k)
+        if len(angka) >= 2:
+            lat, lon = angka[0], angka[1]
             if not lat.startswith("-"):
                 lat = "-" + lat
-            return f"{lat}{sep}{lon}"
-        return k
+            return f"{lat},{lon}"
+        return None
 
-    def bersihkan_baris_asli(teks):
-        t = re.sub(r"[^A-Za-z0-9,\.\-\s]", "", teks)
-        t = re.sub(r"^([A-Za-z0-9]{1,2}\s+)+", "", t.strip())
-        t = re.sub(r"(\s+[A-Za-z0-9]{1,2})+$", "", t.strip())
-        t = re.sub(r"\s+", " ", t).strip(" ,.")
+    def rekonstruksi_alamat_baku(teks_mentah_gabungan):
+        # 1. Bersihkan seluruh karakter sampah di tepi kata
+        teks_bersih = re.sub(r"[^A-Za-z\s]", " ", teks_mentah_gabungan)
+        teks_bersih = re.sub(r"\s+", " ", teks_bersih).lower()
 
-        kamus_perbaikan = [
-            (r"\bKcamatan\b|\bKecamalan\b|\bKecarnatan\b|\bKecamtan\b", "Kecamatan"),
-            (r"\bKabupalen\b|\bKabupatan\b|\bKabupafen\b", "Kabupaten"),
-            (r"Utaraj\b", "Utara,"),
-            (r"Timurj\b", "Timur,"),
-            (r"Baratj\b", "Barat,"),
-            (r"Selatanj\b", "Selatan,"),
-            (r"Tengahj\b", "Tengah,"),
-            (r"Torohj\b", "Toroh,"),
-            (r"Genukj\b", "Genuk,"),
-            (r"Pedurunganj\b", "Pedurungan,"),
-            (r"Gayamsarij\b", "Gayamsari,"),
-            (r"Kota Semaran\b|\bSemaran\b", "Kota Semarang"),
-            (r"\bGroboganj\b|\bGrobogam\b", "Grobogan"),
-            (r"\bPurwodadij\b|\bPurwadadi\b", "Purwodadi"),
-            (r"\bDemakj\b", "Demak"),
-            (r"\bKendalj\b", "Kendal"),
-            (r"\bBatangj\b", "Batang"),
-            (r"\bPekalonganj\b", "Pekalongan"),
-            (r"\bTegalj\b", "Tegal"),
-            (r"\bKudusj\b", "Kudus"),
-            (r"\bPatij\b", "Pati"),
-            (r"\bJeparaj\b", "Jepara"),
-            (r"\bBloraj\b", "Blora"),
-            (r"\bBoyolalij\b", "Boyolali"),
-            (r"\bSalatigaj\b", "Salatiga"),
-        ]
-        for pola, ganti in kamus_perbaikan:
-            t = re.sub(pola, ganti, t, flags=re.IGNORECASE)
+        # 2. Cari Kecocokan Kecamatan Terbaik (Fuzzy / Substring)
+        kec_terpilih = None
+        for kec in sorted(DAFTAR_KECAMATAN, key=len, reverse=True):
+            if kec.lower() in teks_bersih:
+                kec_terpilih = kec
+                break
+        if not kec_terpilih:
+            # Fallback regex jika ada sedikit salah baca huruf di tengah
+            if re.search(r"semarang\s*utara", teks_bersih):
+                kec_terpilih = "Semarang Utara"
+            elif re.search(r"semarang\s*timur", teks_bersih):
+                kec_terpilih = "Semarang Timur"
+            elif re.search(r"semarang\s*tengah", teks_bersih):
+                kec_terpilih = "Semarang Tengah"
+            elif re.search(r"semarang\s*barat", teks_bersih):
+                kec_terpilih = "Semarang Barat"
+            elif re.search(r"semarang\s*selatan", teks_bersih):
+                kec_terpilih = "Semarang Selatan"
 
-        t = re.sub(r"(Kecamatan\s+[A-Za-z\s]+?)\s+(Kabupaten|Kota)\b", r"\1, \2", t, flags=re.IGNORECASE)
-        t = re.sub(r",\s*,", ",", t)
+        # 3. Cari Kecocokan Kota/Kabupaten Terbaik
+        kota_terpilih = None
+        for kk in sorted(DAFTAR_KOTA_KAB, key=len, reverse=True):
+            if kk.lower() in teks_bersih:
+                kota_terpilih = kk
+                break
+        if not kota_terpilih:
+            if "semaran" in teks_bersih:
+                kota_terpilih = "Kota Semarang"
+            elif "grobog" in teks_bersih or "purwodad" in teks_bersih or "toroh" in teks_bersih:
+                kota_terpilih = "Kabupaten Grobogan"
+            elif "demak" in teks_bersih or "sayung" in teks_bersih or "mranggen" in teks_bersih:
+                kota_terpilih = "Kabupaten Demak"
+            elif "kendal" in teks_bersih or "kaliwungu" in teks_bersih or "weleri" in teks_bersih:
+                kota_terpilih = "Kabupaten Kendal"
+            elif "batang" in teks_bersih:
+                kota_terpilih = "Kabupaten Batang"
+            elif "pekalongan" in teks_bersih:
+                kota_terpilih = "Kota Pekalongan"
+            elif "pemalang" in teks_bersih:
+                kota_terpilih = "Kabupaten Pemalang"
+            elif "tegal" in teks_bersih:
+                kota_terpilih = "Kota Tegal"
 
-        if any(k in t.lower() for k in ["indonesia", "yonesi", "ndonesi", "donesia"]):
-            return "Indonesia"
-        if "jawa tengah" in t.lower() or "awa tengah" in t.lower():
-            return "Jawa Tengah"
-        return t
+        # 4. Susun 3 Baris Standar Baku Timemark (Zero Typo!)
+        if kec_terpilih and kota_terpilih:
+            baris_1 = f"Kecamatan {kec_terpilih}, {kota_terpilih}"
+        elif kec_terpilih:
+            baris_1 = f"Kecamatan {kec_terpilih}"
+        elif kota_terpilih:
+            baris_1 = kota_terpilih
+        else:
+            return None
+
+        return [baris_1, "Jawa Tengah", "Indonesia"]
 
     try:
         import pytesseract
         crop_dasar = img_rgba.crop((bx0, by0, bx1, by1)).convert("L")
         crop_besar = crop_dasar.resize((crop_dasar.width * 3, crop_dasar.height * 3), Image.Resampling.LANCZOS)
         kandidat_gambar = [
-            ImageEnhance.Contrast(crop_besar).enhance(2.3),
-            crop_besar.point(lambda p: 255 if p > 185 else 0),
-            crop_besar.point(lambda p: 255 if p > 155 else 0),
+            ImageEnhance.Contrast(crop_besar).enhance(2.4),
+            crop_besar.point(lambda p: 255 if p > 180 else 0),
+            crop_besar.point(lambda p: 255 if p > 150 else 0),
         ]
+
+        kumpulan_teks_ocr = []
         for gbr_uji in kandidat_gambar:
             teks_ocr = pytesseract.image_to_string(gbr_uji, config="--psm 6")
+            kumpulan_teks_ocr.append(teks_ocr)
+
             if not jam_hasil:
-                cari_jam = re.findall(r"\b([0-2]?\d[:\.][0-5]\d)\b", teks_ocr)
+                cari_jam = re.findall(r"\b([0-2]?\d:[0-5]\d)\b", teks_ocr)
                 if cari_jam:
                     jam_hasil = cari_jam[0]
+
             if not koord_hasil:
-                cari_koord = re.findall(r"(-?\d+\.\d+(?:\s*,\s*|\s+)\d+\.\d+)", teks_ocr)
+                cari_koord = re.findall(r"-?\d+\.\d+\s*,\s*\d+\.\d+", teks_ocr)
                 if cari_koord:
                     koord_hasil = normalisasi_koordinat(cari_koord[0])
-            if not alamat_hasil:
-                semua_baris = [b.strip() for b in teks_ocr.splitlines() if b.strip()]
-                idx_mulai = -1
-                for i, b in enumerate(semua_baris):
-                    if re.search(r"-?\d+\.\d+(?:\s*,\s*|\s+)\d+\.\d+", b):
-                        idx_mulai = i + 1
-                        break
-                    elif any(k in b.lower() for k in ["kecamatan", "kcamatan", "kota ", "kabupaten"]):
-                        idx_mulai = i
-                        break
-                if idx_mulai != -1 and len(semua_baris) > idx_mulai:
-                    kandidat_baris = []
-                    for raw_b in semua_baris[idx_mulai : idx_mulai + 3]:
-                        clean_b = bersihkan_baris_asli(raw_b)
-                        if len(clean_b) >= 4:
-                            kandidat_baris.append(clean_b)
-                    if kandidat_baris and any(k in kandidat_baris[0].lower() for k in ["kecamatan", "kota", "kabupaten", "semarang", "grobogan", "toroh", "genuk", "pedurungan", "gayamsari", "tawang", "poncol", "alastua"]):
-                        if re.search(r"\b\d{5}\b", kandidat_baris[0]):
-                            kandidat_baris = [kandidat_baris[0], "Indonesia"]
-                        elif len(kandidat_baris) == 1:
-                            kandidat_baris.extend(["Jawa Tengah", "Indonesia"])
-                        elif len(kandidat_baris) == 2 and kandidat_baris[1] != "Indonesia":
-                            kandidat_baris.append("Indonesia")
-                        alamat_hasil = kandidat_baris
-            if jam_hasil and koord_hasil and alamat_hasil:
-                break
+
+        # Rekonstruksi alamat dari gabungan hasil bacaan terbaik (bukan teks mentah!)
+        alamat_hasil = rekonstruksi_alamat_baku(" ".join(kumpulan_teks_ocr))
+
     except Exception:
         pass
+
     return jam_hasil, koord_hasil, alamat_hasil
 
 def patch_watermark_gambar(img_pil, teks_hari_tanggal_baru, fallback_meta=None):
